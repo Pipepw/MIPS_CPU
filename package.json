@@ -1,0 +1,20 @@
+{
+  "name": "new",
+  "version": "1.0.0",
+  "description": "用Verilog编写一个MIPS指令集的CPU",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pipepw/MIPS_CPU.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Pipepw/MIPS_CPU/issues"
+  },
+  "homepage": "https://github.com/Pipepw/MIPS_CPU#readme"
+}

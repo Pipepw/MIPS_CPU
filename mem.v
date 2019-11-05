@@ -21,7 +21,7 @@
 
 `include"define.v"
 
-module mem(     //TODO:目前没有用到数据存储器，所有没有编写数据存储器，不知道怎么编写数据存储器，就和之前一样：用寄存器来表示?
+module mem(     //TODO:目前没有用到数据存储器，所以没有编写数据存储器，不知道怎么编写数据存储器，就和之前一样：用寄存器来表示?
     input rst,
     input wreg_i,
     input [`RegAddrBus] waddr_i,
