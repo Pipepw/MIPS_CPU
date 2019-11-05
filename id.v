@@ -46,7 +46,7 @@ module id(
 
     //送到执行阶段的信息
     output reg wreg_o,                      //写使能信号
-    output reg [`RegAddrBus] waddr_o,          //写入寄存器地址（目的寄存器 rd ）
+    output reg [`RegAddrBus] waddr_o,       //写入寄存器地址（目的寄存器 rd ）
     output reg [`RegBus] reg1_o,            //输出的源操作数1
     output reg [`RegBus] reg2_o,            //源操作数2
     output reg [`AluOpBus] aluop_o,         //alu控制信号
