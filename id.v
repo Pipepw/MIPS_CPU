@@ -49,8 +49,8 @@ module id(
     output reg [`RegAddrBus] waddr_o,          //写入寄存器地址（目的寄存器 rd ）
     output reg [`RegBus] reg1_o,            //输出的源操作数1
     output reg [`RegBus] reg2_o,            //源操作数2
-    output reg [`AluOpBus] aluop_o,         //op字段
-    output reg [`AluSelBus] alusel_o        //funct字段
+    output reg [`AluOpBus] aluop_o,         //alu控制信号
+    output reg [`AluSelBus] alusel_o        //运算类型
     );
 
 //我和书上不同的地方，书上是直接按照op进行分类，而我是先按照指令类型进行分类，实际上这样做是多此一举
