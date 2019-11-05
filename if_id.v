@@ -38,7 +38,7 @@ module if_id(
         end
         else begin //TODO:就只是传递一下，有什么意义，在哪体现存储指令呢？
             id_pc <= if_pc;
-            id_inst <= id_inst;
+            id_inst <= if_inst;
         end
     end
 endmodule

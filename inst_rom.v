@@ -21,20 +21,20 @@
 
 `include"define.v"
 
-module inst_rom(
+module inst_rom(//TODO:这部分没有问题
     input ce,
-    input [`RegAddrBus]addr,
+    input [`InstAddrBus]addr,
     output reg [`InstBus] inst
     );
     reg [`InstBus] inst_mem[0:`InstMemNum-1];
-    initial $readmemh("inst_mem.data",inst__mem);
+    initial $readmemh("C:/Users/Pipe/Documents/CPU/CPU/CPU.srcs/sources_1/inst_mem.data",inst_mem);
     always @(*)begin
         if(ce == `ChipDisa)begin
             inst <= `ZeroWord;
         end
         else begin
             //之所以到2，是因为MIPS是按字节寻址的，而指令的地址是位，所以要除以4，也就是右移两位
-            inst <= inst_mem[addr[`InstMemNumLog2 + 1 : 2]];
+            inst <= inst_mem[addr[`InstMemNumLog2+1:2]];
         end
     end
 endmodule

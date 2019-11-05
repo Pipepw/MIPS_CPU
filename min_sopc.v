@@ -20,6 +20,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 `include"define.v"
+`include"cpu.v"
+`include"inst_rom.v"
 
 module min_sopc(
     input clk,
@@ -31,7 +33,7 @@ module min_sopc(
 
     //cpu的输出，rom的输入
     wire ce;
-    wire [`RegAddrBus] addr;
+    wire [`InstAddrBus] addr;
 
     //inst_rom的实例化
     inst_rom inst_rom0(

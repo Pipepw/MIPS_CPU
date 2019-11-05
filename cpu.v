@@ -20,13 +20,20 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 `include"define.v"
+`include"ex_mem.v"
+`include"ex.v"
+`include"id_ex.v"
+`include"id.v"
+`include"if_id.v"
+`include"mem_wb.v"
+`include"mem.v"
 
 module cpu(
     input clk,rst,
-    input rom_data_i,               //存储器传输进来的指令
+    input [`InstBus] rom_data_i,        //存储器传输进来的指令
 
-    output rom_ce_o,                //通过控制pc，从而控制整个处理器
-    output [`RegAddrBus] rom_addr_o //指令存储器的输入地址
+    output rom_ce_o,                    //通过控制pc，从而控制整个处理器
+    output [`InstAddrBus] rom_addr_o    //指令存储器的输入地址
     );
 
 /********************每个部件之间的连线******************/
@@ -86,7 +93,7 @@ module cpu(
 
 /*******************每个部件的实例化************************/
     //regfile的实例化
-    regfile(
+    regfile regfile0(
         .clk(clk),
         .rst(rst),
         .we(wreg_reg),
@@ -208,7 +215,7 @@ module cpu(
         .rst(rst),
         .mem_reg(wreg_mem_mem),
         .mem_waddr(waddr_mem_mem),
-        .mem_wdata(waddr_mem_mem),
+        .mem_wdata(wdata_mem_mem),
 
         .wb_reg(wreg_reg),
         .wb_waddr(waddr_reg),
