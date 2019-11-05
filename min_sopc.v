@@ -34,7 +34,7 @@ module min_sopc(
     wire [`RegAddrBus] addr;
 
     //inst_rom的实例化
-    inst_rom(
+    inst_rom inst_rom0(
         .ce(ce),
         .addr(addr),
         .inst(inst)
