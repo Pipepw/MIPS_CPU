@@ -38,6 +38,16 @@ module id(
     input [`RegBus] reg1_data_i,            //从regfile输入的第一个读输入
     input [`RegBus] reg2_data_i,            //第二个读输入
 
+    //来自ex阶段的旁路数据
+    input [`RegBus] ex_wdata_i;
+    input [`RegAddrBus] ex_waddr_i;
+    input ex_wreg_i;
+
+    //来自mem阶段的旁路数据
+    input [`RegBus] mem_wdata_i;
+    input [`RegAddrBus] mem_waddr_i;
+    input mem_wreg_i;
+
     //输出到regfile的信息
     output reg reg1_read_o,                 //第一个读使能信号
     output reg reg2_read_o,                 //第二个读使能信号
@@ -113,7 +123,10 @@ module id(
         end //if else
     end     //always        通过这样的方法，使块更加可读
 
-//分开写的原因:1.不同的敏感列表，随时需要读取操作  2.所有指令公用这些，只需要设置读使能信号就行了
+//分开写的原因:
+//1.不同的敏感列表，随时需要读取操作
+//2.所有指令公用这些，只需要设置读使能信号就行了
+//3.不是两个操作数都会读取
 /**********************二、读取源操作数1*****************************/
 
     always @(*)begin
@@ -121,7 +134,19 @@ module id(
             reg1_o <= `ZeroWord;
         end
         else if(reg1_read_o == `ReadEna)begin
-            reg1_o <= reg1_data_i;  //regfile 读端口1的值
+
+        //当读地址与写地址相同，并且写使能为真时，说明发生了数据相关，这是需要旁路
+            if((reg1_addr_o==ex_waddr_i)&&(ex_wreg_i=='WriteEna))begin
+                reg1_o <= ex_wdata_i;
+            end
+            else if((reg1_addr_o==mem_waddr_i)&&(mem_wreg_i=='WriteEna))begin
+                reg1_o <= mem_wdata_i;
+            end
+
+        //当没有发生旁路时，则从regfile中读取数据
+            else begin
+                reg1_o <= reg1_data_i;  //regfile 读端口1的值
+            end
         end
         else if(reg1_read_o == `ReadDisa)begin
             reg1_o <= imm;          //为什么赋值为立即数呢？
@@ -131,14 +156,26 @@ module id(
         end
     end
 
-    /**********************三、读取源操作数2*****************************/
+/**********************三、读取源操作数2*****************************/
 
     always @(*)begin
         if(rst == `RstEna)begin
             reg2_o <= `ZeroWord;
         end
         else if(reg2_read_o == `ReadEna)begin
-            reg2_o <= reg2_data_i;
+
+        //当读地址与写地址相同，并且写使能为真时，说明发生了数据相关，这是需要旁路
+            if((reg2_addr_o==ex_waddr_i)&&(ex_wreg_i=='WriteEna))begin
+                reg2_o <= ex_wdata_i;
+            end
+            else if((reg2_addr_o==mem_waddr_i)&&(mem_wreg_i=='WriteEna))begin
+                reg2_o <= mem_wdata_i;
+            end
+
+        //当没有发生旁路时，则从regfile中读取数据
+            else begin
+                reg2_o <= reg2_data_i;  //regfile 读端口2的值
+            end
         end
         else if(reg2_read_o == `ReadDisa)begin
             reg2_o <= imm;
