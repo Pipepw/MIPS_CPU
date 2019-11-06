@@ -37,7 +37,8 @@ module regfile(
     );
 //******定义寄存器************
     reg [`RegBus] regs[0:`RegNum-1];
-//******写操作****************
+
+//******************写操作****************
     always @(posedge clk)begin//`RegNumLog2的作用是什么?不能是通用寄存器？
         if(rst==`RstDisa)begin//还是说地址不能是5'h0就行,答：因为MIPS中$0寄存器的值只能是0
             if((we==`WriteEna)&&(waddr!=`RegNumLog2'h0))begin
@@ -45,7 +46,8 @@ module regfile(
             end
         end
     end
-//******读操作1****************读操作是个组合逻辑操作
+
+//*****************读操作1****************读操作是个组合逻辑操作
     always @(*) begin           //这样做的目的：保证在译码阶段取得要读取的值（任何时候都有可能读取）
         if(rst==`RstEna)begin   //并且需要在一个时钟周期内进行多次读操作
             rdata1<=`ZeroWord;
@@ -63,7 +65,8 @@ module regfile(
             rdata1 <= `ZeroWord;
         end
     end
-//******读操作2****************
+
+//******************读操作2****************
     always @(*) begin
         if(rst==`RstEna)begin
             rdata2<=`ZeroWord;
