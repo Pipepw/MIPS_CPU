@@ -38,12 +38,12 @@ module id(
     input [`RegBus] reg1_data_i,            //从regfile输入的第一个读输入
     input [`RegBus] reg2_data_i,            //第二个读输入
 
-    //来自ex阶段的旁路数据
+    //来自ex阶段的旁路数据，当相邻指令发生数据冲突时
     input [`RegBus] ex_wdata_i;
     input [`RegAddrBus] ex_waddr_i;
     input ex_wreg_i;
 
-    //来自mem阶段的旁路数据
+    //来自mem阶段的旁路数据，当间隔一条指令发生数据发生数据冲突时
     input [`RegBus] mem_wdata_i;
     input [`RegAddrBus] mem_waddr_i;
     input mem_wreg_i;
