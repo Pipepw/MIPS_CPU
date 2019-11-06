@@ -179,9 +179,9 @@ module cpu(
         .wreg_i(wreg_ex),
         .waddr_i(reg_addr_ex),
 
-        .wreg_o(wreg_mem),
-        .waddr_o(waddr_mem),
-        .wdata_o(wdata_mem)
+        .wreg_o(wreg_ex_mem),
+        .waddr_o(waddr_ex),
+        .wdata_o(wdata_ex)
     );
 
     //ex_mem的实例化
@@ -190,7 +190,7 @@ module cpu(
         .rst(rst),
         .ex_waddr(waddr_ex),
         .ex_wdata(wdata_ex),
-        .ex_wreg(wreg_ex),
+        .ex_wreg(wreg_ex_mem),
 
         .mem_waddr(waddr_mem),
         .mem_wdata(wdata_mem),
