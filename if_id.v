@@ -36,7 +36,7 @@ module if_id(
             id_pc <= `ZeroWord;
             id_inst <= `ZeroWord;
         end
-        else begin //TODO:就只是传递一下，有什么意义，在哪体现存储指令呢？
+        else begin
             id_pc <= if_pc;
             id_inst <= if_inst;
         end

@@ -21,7 +21,7 @@
 
 `include"define.v"
 
-module inst_rom(//TODO:这部分没有问题
+module inst_rom(
     input ce,
     input [`InstAddrBus]addr,
     output reg [`InstBus] inst

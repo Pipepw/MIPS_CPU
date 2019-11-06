@@ -76,10 +76,6 @@ module id(
             reg2_addr_o <= `RegNumLog2'b0;
             wreg_o <= `WriteDisa;
             waddr_o <= `NOPRegAddr;        //宏定义：默认地址为空时
-
-            reg1_o <= `RegWidth'b0;     //TODO:书上没有对reg_o进行处理，为什么呢？
-            reg2_o <= `RegWidth'b0;
-
             aluop_o <= `EXE_NOP_OP;
             alusel_o <= `EXE_RES_NOP;
             imm <= 32'h0;

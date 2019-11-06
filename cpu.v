@@ -42,7 +42,7 @@ module cpu(
     wire [`InstAddrBus] pc_if;      //通向if_id
 
     //if_id的输出与id的输入
-    wire [`InstAddrBus] pc_id;      //TODO:指令的地址，id拿来干嘛
+    wire [`InstAddrBus] pc_id;      //TODO:指令的地址，id拿来干嘛（在id中也没用到这个东西，也许后面会用到）
     wire [`InstBus] inst;           //指令
 
     //id的输出与regfile的输入
