@@ -137,6 +137,12 @@ module cpu(
         .inst_i(inst),
         .reg1_data_i(reg1_data),
         .reg2_data_i(reg2_data),
+        .ex_wdata_i(wdata_ex),
+        .ex_waddr_i(waddr_ex),
+        .ex_wreg_i(wreg_ex_mem),
+        .mem_wdata_i(wdata_mem_mem),
+        .mem_waddr_i(waddr_mem_mem),
+        .mem_wreg_i(wreg_mem_mem),
 
         .reg1_read_o(reg1_read),
         .reg2_read_o(reg2_read),

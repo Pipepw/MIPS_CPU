@@ -39,14 +39,14 @@ module id(
     input [`RegBus] reg2_data_i,            //第二个读输入
 
     //来自ex阶段的旁路数据，当相邻指令发生数据冲突时
-    input [`RegBus] ex_wdata_i;
-    input [`RegAddrBus] ex_waddr_i;
-    input ex_wreg_i;
+    input [`RegBus] ex_wdata_i,
+    input [`RegAddrBus] ex_waddr_i,
+    input ex_wreg_i,
 
     //来自mem阶段的旁路数据，当间隔一条指令发生数据发生数据冲突时
-    input [`RegBus] mem_wdata_i;
-    input [`RegAddrBus] mem_waddr_i;
-    input mem_wreg_i;
+    input [`RegBus] mem_wdata_i,
+    input [`RegAddrBus] mem_waddr_i,
+    input mem_wreg_i,
 
     //输出到regfile的信息
     output reg reg1_read_o,                 //第一个读使能信号
@@ -68,7 +68,7 @@ module id(
 
     //先把所有情况的指令段分离出来，TODO:为什么是这样划分的？看到后面才会明白（应该是因为不同的指令需要不同的指令段）
     wire[5:0] op = inst_i[31:26];   //op操作段
-    wire[4:0] op2 = inst_i[10:6];   //shamt
+    wire[4:0] op2 = inst_i[10:6];   //shamt，并不是这样的，这几个代表的是几个不同等级的指令
     wire[5:0] op3 = inst_i[5:0];    //funct
     wire[4:0] op4 = inst_i[20:16];  //rt
     //立即数，等待后面扩展为32位之后再赋值
@@ -105,6 +105,16 @@ module id(
             imm <= `ZeroWord;
 
             case(op)                    //这里面主要是对控制信号以及地址进行操作
+                `EXE_ANDI:  begin
+                    aluop_o <= `EXE_AND_OP;
+                    alusel_o <= `EXE_RES_LOGIC;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadDisa;
+                    imm <= {16'b0,inst_i[15:0]};
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
                 `EXE_ORI:    begin      //读取rs的数据，目的寄存器为rt
                     aluop_o <= `EXE_OR_OP;
                     alusel_o <= `EXE_RES_LOGIC;
@@ -117,9 +127,150 @@ module id(
                     waddr_o <= inst_i[20:16];
                     instvalid <= `InstValid;
                 end
+                `EXE_XORI:  begin
+                    aluop_o <= `EXE_XOR_OP;
+                    alusel_o <= `EXE_RES_LOGIC;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadDisa;
+                    imm <= {16'b0,inst_i[15:0]};
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+                `EXE_LUI:   begin   //高16位存放立即数数据，低16位存0
+                    aluop_o <= `EXE_LUI_OP;
+                    alusel_o <= `EXE_RES_LOGIC;
+                    reg1_read_o <= `ReadEna;    //源操作数1赋值为0
+                    reg2_read_o <= `ReadDisa;   //源操作数2赋值为立即数
+                    imm <= {inst_i[15:0],16'h0};    //直接利用立即数，所以不用扩展，但是imm还是32位的，所以还是要扩展，后面也是按32位进行处理
+                    wreg_o <= `WriteEna;        //因为在ex没有相应的操作，所以只有这里赋值为立即数
+                    waddr_o <= inst_i[20:16];   //写入的地址是rt
+                    instvalid <= `InstValid;
+                end
+                `EXE_PREF:  begin   //TODO:不知道pref和sync这两个指令有什么用
+                    aluop_o <= `EXE_NOP_OP;
+                    alusel_o <= `EXE_RES_NOP;
+                    reg1_read_o <= `ReadDisa;
+                    reg2_read_o <= `ReadDisa;
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
+                end
+
+                //R型指令
+                `EXE_SPECIAL_INST:  begin       //指令码为0的情况,R型指令
+                    case(op2)
+                        5'b00000:  begin
+                            case(op3)
+                                `EXE_AND:   begin
+                                    aluop_o <= `EXE_AND_OP;
+                                    alusel_o <= `EXE_RES_LOGIC;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    // waddr_o <= inst_i[20:16];这个是ori中将数据存到rt中，默认是存到rd中，所以不用单独赋值
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_OR:    begin
+                                    aluop_o <= `EXE_OR_OP;
+                                    alusel_o <= `EXE_RES_LOGIC;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_XOR:   begin
+                                    aluop_o <= `EXE_XOR_OP;
+                                    alusel_o <= `EXE_RES_LOGIC;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_NOR:   begin
+                                    aluop_o <= `EXE_NOR_OP;
+                                    alusel_o <= `EXE_RES_LOGIC;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+
+                                //移位操作
+                                `EXE_SLLV:  begin
+                                    aluop_o <= `EXE_SLL_OP;
+                                    alusel_o <= `EXE_RES_LOGIC;
+                                    reg1_read_o <= `ReadEna;    //用rs作为偏移量
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_SRLV:  begin
+                                    aluop_o <= `EXE_SRL_OP;
+                                    alusel_o <= `EXE_RES_LOGIC;
+                                    reg1_read_o <= `ReadEna;    //用rs作为偏移量
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_SRAV:  begin
+                                    aluop_o <= `EXE_SRA_OP;
+                                    alusel_o <= `EXE_RES_ARITH;
+                                    reg1_read_o <= `ReadEna;    //用rs作为偏移量
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_SYNC:  begin   //空指令
+                                    aluop_o <= `EXE_NOP_OP;
+                                    alusel_o <= `EXE_RES_NOP;
+                                    reg1_read_o <= `ReadDisa;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteDisa;
+                                    instvalid <= `InstValid;
+                                end
+                            endcase //case(op3)
+                        end // op2=5'b00000
+                    default:begin
+                    end
+                    endcase //case(op2)
+                end
                 default:begin   //必须要加一个default，避免成为所以锁存器，即使default为空
                 end
-            endcase
+            endcase //case(op)
+            if(inst_i[31:21] == 11'd0)begin
+                case(op3)
+                    `EXE_SLL:   begin   //逻辑左移，用到了shamt，也就是op2
+                        aluop_o <= `EXE_SLL_OP;
+                        alusel_o <= `EXE_RES_SHIFT;
+                        reg1_read_o <= `ReadDisa;
+                        reg2_read_o <= `ReadEna;    //读取rt寄存器的值
+                        imm[4:0] <= {16'b0,inst_i[10:6]};//用shamt作为输出
+                        wreg_o <= `WriteEna;
+                        waddr_o <= inst_i[15:11];
+                        instvalid <= `InstValid;
+                    end
+                    `EXE_SRL:   begin   //逻辑右移
+                        aluop_o <= `EXE_SRL_OP;
+                        alusel_o <= `EXE_RES_SHIFT;
+                        reg1_read_o <= `ReadDisa;
+                        reg2_read_o <= `ReadEna;
+                        imm[4:0] <= {16'b0,inst_i[10:6]};
+                        wreg_o <= `WriteEna;
+                        waddr_o <= inst_i[15:11];
+                        instvalid <= `InstValid;
+                    end
+                    `EXE_SRA:   begin   //算术右移
+                        aluop_o <= `EXE_SRA_OP;
+                        alusel_o <= `EXE_RES_SHIFT;
+                        reg1_read_o <= `ReadDisa;
+                        reg2_read_o <= `ReadEna;
+                        imm[4:0] <= {16'b0,inst_i[10:6]};
+                        wreg_o <= `WriteEna;
+                        waddr_o <= inst_i[15:11];
+                        instvalid <= `InstValid;
+                    end
+                endcase //case(op3)
+            end
         end //if else
     end     //always        通过这样的方法，使块更加可读
 
@@ -136,20 +287,19 @@ module id(
         else if(reg1_read_o == `ReadEna)begin
 
         //当读地址与写地址相同，并且写使能为真时，说明发生了数据相关，这是需要旁路
-            if((reg1_addr_o==ex_waddr_i)&&(ex_wreg_i=='WriteEna))begin
+            if((reg1_addr_o==ex_waddr_i)&&(ex_wreg_i==`WriteEna))begin
                 reg1_o <= ex_wdata_i;
             end
-            else if((reg1_addr_o==mem_waddr_i)&&(mem_wreg_i=='WriteEna))begin
+            else if((reg1_addr_o==mem_waddr_i)&&(mem_wreg_i==`WriteEna))begin
                 reg1_o <= mem_wdata_i;
             end
-
-        //当没有发生旁路时，则从regfile中读取数据
+            //当没有发生旁路时，则从regfile中读取数据
             else begin
                 reg1_o <= reg1_data_i;  //regfile 读端口1的值
             end
         end
         else if(reg1_read_o == `ReadDisa)begin
-            reg1_o <= imm;          //为什么赋值为立即数呢？
+            reg1_o <= imm;          //为什么赋值为立即数呢？因为有可能是会其他的部分作为输出
         end
         else begin
             reg1_o <= `ZeroWord;
@@ -165,14 +315,13 @@ module id(
         else if(reg2_read_o == `ReadEna)begin
 
         //当读地址与写地址相同，并且写使能为真时，说明发生了数据相关，这是需要旁路
-            if((reg2_addr_o==ex_waddr_i)&&(ex_wreg_i=='WriteEna))begin
+            if((reg2_addr_o==ex_waddr_i)&&(ex_wreg_i==`WriteEna))begin
                 reg2_o <= ex_wdata_i;
             end
-            else if((reg2_addr_o==mem_waddr_i)&&(mem_wreg_i=='WriteEna))begin
+            else if((reg2_addr_o==mem_waddr_i)&&(mem_wreg_i==`WriteEna))begin
                 reg2_o <= mem_wdata_i;
             end
-
-        //当没有发生旁路时，则从regfile中读取数据
+            //当没有发生旁路时，则从regfile中读取数据
             else begin
                 reg2_o <= reg2_data_i;  //regfile 读端口2的值
             end

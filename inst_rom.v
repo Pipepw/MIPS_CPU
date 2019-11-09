@@ -27,7 +27,7 @@ module inst_rom(
     output reg [`InstBus] inst
     );
     reg [`InstBus] inst_mem[0:`InstMemNum-1];
-    initial $readmemh("C:/Users/Pipe/Documents/CPU/CPU/CPU.srcs/sources_1/inst_mem.data",inst_mem);
+    initial $readmemh("E:/Virtual Machines/VM sharefile/inst_rom.data",inst_mem);
     always @(*)begin
         if(ce == `ChipDisa)begin
             inst <= `ZeroWord;
