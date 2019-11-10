@@ -74,10 +74,10 @@ module ex(
             `EXE_SLL_OP:    begin
                 shifters <= reg2_i << reg1_i[4:0];//低5位
             end
-            `EXE_SRL:   begin
+            `EXE_SRL_OP:   begin
                 shifters <= reg2_i >> reg1_i[4:0];
             end
-            `EXE_SRA:   begin
+            `EXE_SRA_OP:   begin
                 // shifters <= reg1_i >>> reg2_i;//>>>表示算术右移，不能这样用，因为>>>会根据数据类型进行相应的操作，而我不知道怎么将无符号数转化为有符号数
                 shifters <= {{32{reg2_i[31]}}}<<(6'd32-{1'b0,reg1_i[4:0]})
                             | reg2_i >> reg1_i[4:0];//太巧妙了，不过其实就是对高位进行补符号位，

@@ -140,11 +140,11 @@ module id(
                 `EXE_LUI:   begin   //高16位存放立即数数据，低16位存0
                     aluop_o <= `EXE_LUI_OP;
                     alusel_o <= `EXE_RES_LOGIC;
-                    reg1_read_o <= `ReadEna;    //源操作数1赋值为0
-                    reg2_read_o <= `ReadDisa;   //源操作数2赋值为立即数
+                    reg1_read_o <= `ReadEna;        //源操作数1赋值为0
+                    reg2_read_o <= `ReadDisa;       //源操作数2赋值为立即数
                     imm <= {inst_i[15:0],16'h0};    //直接利用立即数，所以不用扩展，但是imm还是32位的，所以还是要扩展，后面也是按32位进行处理
-                    wreg_o <= `WriteEna;        //因为在ex没有相应的操作，所以只有这里赋值为立即数
-                    waddr_o <= inst_i[20:16];   //写入的地址是rt
+                    wreg_o <= `WriteEna;            //因为在ex没有相应的操作，所以只有这里赋值为立即数
+                    waddr_o <= inst_i[20:16];       //写入的地址是rt
                     instvalid <= `InstValid;
                 end
                 `EXE_PREF:  begin   //TODO:不知道pref和sync这两个指令有什么用
@@ -198,7 +198,7 @@ module id(
                                 //移位操作
                                 `EXE_SLLV:  begin
                                     aluop_o <= `EXE_SLL_OP;
-                                    alusel_o <= `EXE_RES_LOGIC;
+                                    alusel_o <= `EXE_RES_SHIFT;
                                     reg1_read_o <= `ReadEna;    //用rs作为偏移量
                                     reg2_read_o <= `ReadEna;
                                     wreg_o <= `WriteEna;
@@ -206,7 +206,7 @@ module id(
                                 end
                                 `EXE_SRLV:  begin
                                     aluop_o <= `EXE_SRL_OP;
-                                    alusel_o <= `EXE_RES_LOGIC;
+                                    alusel_o <= `EXE_RES_SHIFT;
                                     reg1_read_o <= `ReadEna;    //用rs作为偏移量
                                     reg2_read_o <= `ReadEna;
                                     wreg_o <= `WriteEna;
@@ -214,19 +214,23 @@ module id(
                                 end
                                 `EXE_SRAV:  begin
                                     aluop_o <= `EXE_SRA_OP;
-                                    alusel_o <= `EXE_RES_ARITH;
+                                    alusel_o <= `EXE_RES_SHIFT;
                                     reg1_read_o <= `ReadEna;    //用rs作为偏移量
                                     reg2_read_o <= `ReadEna;
                                     wreg_o <= `WriteEna;
                                     instvalid <= `InstValid;
                                 end
-                                `EXE_SYNC:  begin   //空指令
+
+                                //空指令,nop以及snop不用单独处理，一种特殊的移位操作
+                                `EXE_SYNC:  begin
                                     aluop_o <= `EXE_NOP_OP;
                                     alusel_o <= `EXE_RES_NOP;
                                     reg1_read_o <= `ReadDisa;
-                                    reg2_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;//TODO:为什么都是将reg2设置为可读
                                     wreg_o <= `WriteDisa;
                                     instvalid <= `InstValid;
+                                end
+                                default:begin
                                 end
                             endcase //case(op3)
                         end // op2=5'b00000
@@ -244,7 +248,7 @@ module id(
                         alusel_o <= `EXE_RES_SHIFT;
                         reg1_read_o <= `ReadDisa;
                         reg2_read_o <= `ReadEna;    //读取rt寄存器的值
-                        imm[4:0] <= {16'b0,inst_i[10:6]};//用shamt作为输出
+                        imm[4:0] <= inst_i[10:6];//用shamt作为输出，本来只有4位，我还补16个0？
                         wreg_o <= `WriteEna;
                         waddr_o <= inst_i[15:11];
                         instvalid <= `InstValid;
@@ -254,7 +258,7 @@ module id(
                         alusel_o <= `EXE_RES_SHIFT;
                         reg1_read_o <= `ReadDisa;
                         reg2_read_o <= `ReadEna;
-                        imm[4:0] <= {16'b0,inst_i[10:6]};
+                        imm[4:0] <= inst_i[10:6];
                         wreg_o <= `WriteEna;
                         waddr_o <= inst_i[15:11];
                         instvalid <= `InstValid;
@@ -264,14 +268,16 @@ module id(
                         alusel_o <= `EXE_RES_SHIFT;
                         reg1_read_o <= `ReadDisa;
                         reg2_read_o <= `ReadEna;
-                        imm[4:0] <= {16'b0,inst_i[10:6]};
+                        imm[4:0] <= inst_i[10:6];
                         wreg_o <= `WriteEna;
                         waddr_o <= inst_i[15:11];
                         instvalid <= `InstValid;
                     end
+                    default:begin
+                    end
                 endcase //case(op3)
             end
-        end //if else
+        end //if
     end     //always        通过这样的方法，使块更加可读
 
 //分开写的原因:
