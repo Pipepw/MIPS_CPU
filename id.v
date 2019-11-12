@@ -1,23 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2019/11/01 17:53:09
-// Design Name: 
-// Module Name: id
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
 
 //与pc和regfile组合，完成译码功能，取数也是在这时候开始的
 //所谓的译码就是将指令中需要的东西准备好，根据指令来进行操作，现在只考虑ori指令
@@ -219,6 +200,64 @@ module id(
                                     reg2_read_o <= `ReadEna;
                                     wreg_o <= `WriteEna;
                                     instvalid <= `InstValid;
+                                end
+
+                                //移动指令
+                                `EXE_MFHI:  begin
+                                    wreg_o <= `WriteEna;
+                                    aluop_o <= `EXE_MFHI_OP;
+                                    alusel_o <= `EXE_RES_MOVE;
+                                    reg1_read_o <= 1'b0;
+                                    reg2_read_o <= 1'b0;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_MFLO:  begin
+                                    wreg_o <= `WriteEna;
+                                    aluop_o <= `EXE_MFLO_OP;
+                                    alusel_o <= `EXE_RES_MOVE;
+                                    reg1_read_o <= 1'b0;
+                                    reg2_read_o <= 1'b0;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_MTHI:  begin
+                                    wreg_o <= `WriteDisa;
+                                    aluop_o <= `EXE_MTHI_OP;
+                                    reg1_read_o <= 1'b1;
+                                    reg2_read_o <= 1'b0;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_MTLO:  begin
+                                    wreg_o <= `WriteDisa;
+                                    aluop_o <= `EXE_MTLO_OP;
+                                    reg1_read_o <= 1'b1;
+                                    reg2_read_o <= 1'b0;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_MOVN:  begin
+                                    aluop_o <= `EXE_MOVN_OP;
+                                    alusel_o <= `EXE_RES_MOVE;
+                                    reg1_read_o <= 1'b1;
+                                    reg2_read_o <= 1'b1;
+                                    instvalid <= `InstValid;
+                                    if(reg2_o != `ZeroWord)begin
+                                        wreg_o <= `WriteEna;
+                                    end
+                                    else begin
+                                        wreg_o <= `WriteDisa;
+                                    end
+                                end
+                                `EXE_MOVZ:  begin
+                                    aluop_o <= `EXE_MOVZ_OP;
+                                    alusel_o <= `EXE_RES_MOVE;
+                                    reg1_read_o <= 1'b1;
+                                    reg2_read_o <= 1'b1;
+                                    instvalid <= `InstValid;
+                                    if(reg2_o == `ZeroWord)begin
+                                        wreg_o <= `WriteEna;
+                                    end
+                                    else begin
+                                        wreg_o <= `WriteDisa;
+                                    end
                                 end
 
                                 //空指令,nop以及snop不用单独处理，一种特殊的移位操作

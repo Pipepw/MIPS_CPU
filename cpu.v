@@ -1,23 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2019/11/05 15:07:12
-// Design Name: 
-// Module Name: cpu
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
 
 `include"define.v"
 `include"ex_mem.v"
@@ -71,25 +52,43 @@ module cpu(
     wire [`RegAddrBus] reg_addr_ex; //写入的寄存器地址
     wire wreg_ex;                   //写使能信号
 
-    //ex的输出与ex_men的输入
+    //ex的输出与ex_mem的输入
     wire [`RegBus] wdata_ex;        //写入的数据
     wire [`RegAddrBus] waddr_ex;    //写入的寄存器地址
     wire wreg_ex_mem;               //写使能信号
+    wire [`RegBus] hi_ex;
+    wire [`RegBus] lo_ex;
+    wire whilo_ex;
 
     //ex_mem的输出与mem的输入
     wire [`RegBus] wdata_mem;        //写入的数据
     wire [`RegAddrBus] waddr_mem;    //写入的寄存器地址
     wire wreg_mem;                   //写使能信号
+    wire [`RegBus] hi_mem;
+    wire [`RegBus] lo_mem;
+    wire whilo_mem;
 
     //mem的输出与mem_wb的输入
     wire [`RegBus] wdata_mem_mem;    //写入的数据
     wire [`RegAddrBus] waddr_mem_mem;//写入的寄存器地址
     wire wreg_mem_mem;               //写使能信号
+    wire [`RegBus] hi_mem_mem;
+    wire [`RegBus] lo_mem_mem;
+    wire whilo_mem_mem;
 
     //mem_wb的输出与regfile的输入
     wire [`RegBus] wdata_reg;        //写入的数据
     wire [`RegAddrBus] waddr_reg;    //写入的寄存器地址
     wire wreg_reg;                   //写使能信号
+
+    //mem_wb的输出与hilo_reg的输入
+    wire [`RegBus] hi_hilo;
+    wire [`RegBus] lo_hilo;
+    wire whilo_hilo;
+
+    //hilo_reg的输出与ex的输入
+    wire [`RegBus] hi;
+    wire [`RegBus] lo;
 
 /*******************每个部件的实例化************************/
     //regfile的实例化
@@ -184,10 +183,21 @@ module cpu(
         .reg2_i(reg2_ex),
         .wreg_i(wreg_ex),
         .waddr_i(reg_addr_ex),
+        .hi_i(hi),
+        .lo_i(lo),
+        .wb_whilo_i(whilo_hilo),
+        .wb_hi_i(hi_hilo),
+        .wb_lo_i(lo_hilo),
+        .mem_whilo_i(whilo_mem_mem),
+        .mem_hi_i(hi_mem_mem),
+        .mem_lo_i(lo_mem_mem),
 
         .wreg_o(wreg_ex_mem),
         .waddr_o(waddr_ex),
-        .wdata_o(wdata_ex)
+        .wdata_o(wdata_ex),
+        .whilo_o(whilo_ex),
+        .hi_o(hi_ex),
+        .lo_o(lo_ex)
     );
 
     //ex_mem的实例化
@@ -197,10 +207,16 @@ module cpu(
         .ex_waddr(waddr_ex),
         .ex_wdata(wdata_ex),
         .ex_wreg(wreg_ex_mem),
+        .ex_whilo(whilo_ex),
+        .ex_hi(hi_ex),
+        .ex_lo(lo_ex),
 
         .mem_waddr(waddr_mem),
         .mem_wdata(wdata_mem),
-        .mem_wreg(wreg_mem)
+        .mem_wreg(wreg_mem),
+        .mem_whilo(whilo_mem),
+        .mem_hi(hi_mem),
+        .mem_lo(lo_mem)
     );
 
     //mem的实例化
@@ -209,10 +225,16 @@ module cpu(
         .wreg_i(wreg_mem),
         .waddr_i(waddr_mem),
         .wdata_i(wdata_mem),
+        .hi_i(hi_mem),
+        .lo_i(lo_mem),
+        .whilo_i(whilo_mem),
 
         .wreg_o(wreg_mem_mem),
         .waddr_o(waddr_mem_mem),
-        .wdata_o(wdata_mem_mem)
+        .wdata_o(wdata_mem_mem),
+        .whilo_o(whilo_mem_mem),
+        .hi_o(hi_mem_mem),
+        .lo_o(lo_mem_mem)
     );
 
     //mem_wb的实例化
@@ -222,9 +244,25 @@ module cpu(
         .mem_reg(wreg_mem_mem),
         .mem_waddr(waddr_mem_mem),
         .mem_wdata(wdata_mem_mem),
+        .mem_whilo(whilo_mem_mem),
+        .mem_hi(hi_mem_mem),
+        .mem_lo(lo_mem_mem),
 
         .wb_reg(wreg_reg),
         .wb_waddr(waddr_reg),
-        .wb_wdata(wdata_reg)
+        .wb_wdata(wdata_reg),
+        .wb_whilo(whilo_hilo),
+        .wb_hi(hi_hilo),
+        .wb_lo(lo_hilo)
+    );
+
+    hilo_reg hilo_reg0(
+        .clk(clk),
+        .rst(rst),
+        .we(whilo_hilo),
+        .hi_i(hi_hilo),
+        .lo_i(lo_hilo),
+        .hi_o(hi),
+        .lo_o(lo)
     );
 endmodule

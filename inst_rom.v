@@ -1,23 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2019/11/05 18:29:46
-// Design Name: 
-// Module Name: inst__rom
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
 
 `include"define.v"
 
@@ -27,7 +8,7 @@ module inst_rom(
     output reg [`InstBus] inst
     );
     reg [`InstBus] inst_mem[0:`InstMemNum-1];
-    initial $readmemh("E:/Virtual Machines/VM sharefile/inst_rom.data",inst_mem);
+    initial $readmemh("E:/Virtual Machines/VMsharefile/inst_rom.data",inst_mem);
     always @(*)begin
         if(ce == `ChipDisa)begin
             inst <= `ZeroWord;

@@ -33,6 +33,13 @@
 `define EXE_SRA     6'b000011           //sra的功能码
 `define EXE_SRAV    6'b000111           //srav的功能码
 
+`define EXE_MOVZ    6'b001010
+`define EXE_MOVN    6'b001011
+`define EXE_MFHI    6'b010000
+`define EXE_MTHI    6'b010001
+`define EXE_MFLO    6'b010010
+`define EXE_MTLO    6'b010011
+
 `define EXE_SYNC    6'b001111           //sync的功能码
 `define EXE_PREF    6'b110011           //pref的指令码
 `define EXE_NOP     6'b000000           //nop的指令码
@@ -48,12 +55,20 @@
 `define EXE_SLL_OP  8'b00000110     //SLL逻辑左移
 `define EXE_SRA_OP  8'b00000111     //SRA算术右移
 `define EXE_SRL_OP  8'b00001000     //SRL逻辑右移
-`define EXE_PREF_OP 8'b00001001     //PREF
+
+`define EXE_MOVZ_OP 8'b00001001
+`define EXE_MOVN_OP 8'b00001010
+`define EXE_MFHI_OP 8'b00001011
+`define EXE_MFLO_OP 8'b00001100
+`define EXE_MTHI_OP 8'b00001101
+`define EXE_MTLO_OP 8'b00001110
+
+`define EXE_PREF_OP 8'b00001111     //PREF
 `define EXE_NOP_OP  8'b00000000     //这个就是流水线中的气泡
 
 //AluSel
 `define EXE_RES_LOGIC       3'b001      //用来确定运算类型的，由于现在只有 ori 操作，所以只有逻辑运算
-`define EXE_RES_ARITH       3'b010
+`define EXE_RES_MOVE        3'b010
 `define EXE_RES_SHIFT       3'b100      //shift有什么作用
 `define EXE_RES_NOP         3'b000
 
