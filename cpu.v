@@ -90,6 +90,11 @@ module cpu(
     wire [`RegBus] hi;
     wire [`RegBus] lo;
 
+    //ctrl的输入与输出，同时也是各个中间件的输入
+    wire stallreq_from_ex;
+    wire stallreq_from_id;
+    wire [5:0] stall;
+
 /*******************每个部件的实例化************************/
     //regfile的实例化
     regfile regfile0(
@@ -111,6 +116,7 @@ module cpu(
     pc_reg pc_reg0(
         .clk(clk),
         .rst(rst),
+        .stall(stall),
 
         .pc(pc_if),
         .ce(rom_ce_o)
@@ -124,6 +130,7 @@ module cpu(
         .rst(rst),
         .if_pc(pc_if),
         .if_inst(rom_data_i), //指令存储器的值
+        .stall(stall),
 
         .id_pc(pc_id),
         .id_inst(inst)
@@ -152,7 +159,8 @@ module cpu(
         .reg1_o(reg1_id),
         .reg2_o(reg2_id),
         .aluop_o(aluop_id),
-        .alusel_o(alusel_id)
+        .alusel_o(alusel_id),
+        .stallreq_from_id(stallreq_from_id)
     );
 
     //id_ex的实例化
@@ -165,6 +173,7 @@ module cpu(
         .id_waddr(reg_addr_id),
         .id_reg1(reg1_id),
         .id_reg2(reg2_id),
+        .stall(stall),
 
         .ex_alusel(alusel_ex),
         .ex_aluop(aluop_ex),
@@ -197,7 +206,8 @@ module cpu(
         .wdata_o(wdata_ex),
         .whilo_o(whilo_ex),
         .hi_o(hi_ex),
-        .lo_o(lo_ex)
+        .lo_o(lo_ex),
+        .stallreq_from_ex(stallreq_from_ex)
     );
 
     //ex_mem的实例化
@@ -210,6 +220,7 @@ module cpu(
         .ex_whilo(whilo_ex),
         .ex_hi(hi_ex),
         .ex_lo(lo_ex),
+        .stall(stall),
 
         .mem_waddr(waddr_mem),
         .mem_wdata(wdata_mem),
@@ -247,6 +258,7 @@ module cpu(
         .mem_whilo(whilo_mem_mem),
         .mem_hi(hi_mem_mem),
         .mem_lo(lo_mem_mem),
+        .stall(stall),
 
         .wb_reg(wreg_reg),
         .wb_waddr(waddr_reg),
@@ -264,5 +276,11 @@ module cpu(
         .lo_i(lo_hilo),
         .hi_o(hi),
         .lo_o(lo)
+    );
+
+    ctrl ctrl0(
+        .stallreq_from_ex(stallreq_from_ex),
+        .stallreq_from_id(stallreq_from_id),
+        .stall(stall)
     );
 endmodule

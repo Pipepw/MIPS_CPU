@@ -14,6 +14,8 @@
 `define False_v     1'b0                //逻辑“假”
 `define ChipEna     1'b1                //芯片使能
 `define ChipDisa    1'b0                //芯片禁止
+`define Stop        1'b1                //流水暂停
+`define NoStop      1'b0                //流水继续
 
 //*********** 与具体指令有关的宏定义 **********************
 //为什么指令码和功能码用同样的表示方法呢？

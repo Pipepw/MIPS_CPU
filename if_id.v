@@ -8,6 +8,8 @@ module if_id(
     //来自取指阶段的信号
     input [`InstAddrBus] if_pc,//取指阶段的地址
     input [`InstBus] if_inst,//取指阶段的指令
+
+    input [5:0] stall,
     //对应译码阶段的信号
     output reg[`InstAddrBus] id_pc,//译码阶段的地址
     output reg[`InstBus] id_inst//译码阶段的指令
@@ -17,7 +19,11 @@ module if_id(
             id_pc <= `ZeroWord;
             id_inst <= `ZeroWord;
         end
-        else begin
+        else if(stall[1] == `Stop && stall[2] == `NoStop)begin
+            id_pc <= `ZeroWord;
+            id_inst <= `ZeroWord;
+        end
+        else if(stall[1] == `NoStop)begin
             id_pc <= if_pc;
             id_inst <= if_inst;
         end

@@ -10,6 +10,7 @@ module mem_wb(      //这种中间寄存器都是在一个时钟周期之后将�
     input mem_whilo,
     input [`RegBus] mem_hi,
     input [`RegBus] mem_lo,
+    input [5:0] stall,
 
     output reg wb_reg,
     output reg [`RegAddrBus] wb_waddr,
@@ -27,7 +28,16 @@ module mem_wb(      //这种中间寄存器都是在一个时钟周期之后将�
             wb_hi <= `ZeroWord;
             wb_lo <= `ZeroWord;
         end
-        else begin
+        //很典型的一种情况，下一个周期是单周期的操作，所以需要在其执行完之后输入空指令，否则会出现重复运行的情况
+        else if(stall[4] == `Stop && stall[5] == `NoStop)begin
+            wb_reg <= `WriteDisa;
+            wb_waddr <= `NOPRegAddr;
+            wb_wdata <= `ZeroWord;
+            wb_whilo <= `WriteDisa;
+            wb_hi <= `ZeroWord;
+            wb_lo <= `ZeroWord;
+        end
+        else if(stall[4] == `NoStop)begin
             wb_reg <= mem_reg;
             wb_waddr <= mem_waddr;
             wb_wdata <= mem_wdata;

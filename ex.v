@@ -25,7 +25,8 @@ module ex(
     output reg [`RegBus] wdata_o,
     output reg [`RegBus] hi_o,
     output reg [`RegBus] lo_o,
-    output reg whilo_o
+    output reg whilo_o,
+    output reg [5:0] stallreq
 
     );
     //保存逻辑运算的结果（因为现在只有一个 ori 指令，所以只考虑这个）
