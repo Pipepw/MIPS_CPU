@@ -137,6 +137,47 @@ module id(
                     instvalid <= `InstValid;
                 end
 
+                `EXE_ADDI:  begin
+                    aluop_o <= `EXE_ADD_OP;
+                    alusel_o <= `EXE_RES_ARITH;
+                    reg1_read_o <= `ReadEna;   //立即数运算，rt <- rs + imm
+                    reg2_read_o <= `ReadDisa;
+                    imm <= {{16{inst_i[15]}},inst_i[15:0]};
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+                `EXE_ADDIU: begin
+                    aluop_o <= `EXE_ADDU_OP;
+                    alusel_o <= `EXE_RES_ARITH;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadDisa;
+                    imm <= {{16{inst_i[15]}},inst_i[15:0]};
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+                `EXE_SLTI: begin
+                    aluop_o <= `EXE_SLT_OP;
+                    alusel_o <= `EXE_RES_ARITH;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadDisa;
+                    imm <= {{16{inst_i[15]}},inst_i[15:0]};
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+                `EXE_SLTIU: begin
+                    aluop_o <= `EXE_SLTU_OP;
+                    alusel_o <= `EXE_RES_ARITH;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadDisa;
+                    imm <= {{16{inst_i[15]}},inst_i[15:0]};//符号扩展
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+
                 //R型指令
                 `EXE_SPECIAL_INST:  begin       //指令码为0的情况,R型指令
                     case(op2)
@@ -202,7 +243,7 @@ module id(
                                     instvalid <= `InstValid;
                                 end
 
-                                //移动指令
+                                //移动操作
                                 `EXE_MFHI:  begin
                                     wreg_o <= `WriteEna;
                                     aluop_o <= `EXE_MFHI_OP;
@@ -260,6 +301,70 @@ module id(
                                     end
                                 end
 
+                                //算术操作
+                                `EXE_ADD:   begin
+                                    aluop_o <= `EXE_ADD_OP;
+                                    alusel_o <= `EXE_RES_ARITH;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_ADDU:   begin
+                                    aluop_o <= `EXE_ADDU_OP;
+                                    alusel_o <= `EXE_RES_ARITH;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_SUB:   begin
+                                    aluop_o <= `EXE_SUB_OP;
+                                    alusel_o <= `EXE_RES_ARITH;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_SUBU:   begin
+                                    aluop_o <= `EXE_SUBU_OP;
+                                    alusel_o <= `EXE_RES_ARITH;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_SLT:   begin
+                                    aluop_o <= `EXE_SLT_OP;
+                                    alusel_o <= `EXE_RES_ARITH;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_SLTU:   begin
+                                    aluop_o <= `EXE_SLTU_OP;
+                                    alusel_o <= `EXE_RES_ARITH;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_MULT:  begin
+                                    aluop_o <= `EXE_MULT_OP;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteDisa;   //结果写入hi（高位）与lo（低位）中
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_MULTU:  begin  //无符号数乘法运算
+                                    aluop_o <= `EXE_MULTU_OP;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteDisa;
+                                    instvalid <= `InstValid;
+                                end
+
                                 //空指令,nop以及snop不用单独处理，一种特殊的移位操作
                                 `EXE_SYNC:  begin
                                     aluop_o <= `EXE_NOP_OP;
@@ -276,7 +381,42 @@ module id(
                     default:begin
                     end
                     endcase //case(op2)
-                end
+                end //SPECIAL指令
+
+                `EXE_SPECIAL2_INST:  begin
+                    case(op2)
+                        5'b00000:   begin
+                            case(op3)
+                                `EXE_CLZ:   begin
+                                    aluop_o <= `EXE_CLZ_OP;
+                                    alusel_o <= `EXE_RES_ARITH;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadDisa;   //clz rd,rs;找rs中0的个数，z:zero
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_CLO:   begin
+                                    aluop_o <= `EXE_CLO_OP;
+                                    alusel_o <= `EXE_RES_ARITH;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadDisa;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_MUL:   begin
+                                    aluop_o <= `EXE_MUL_OP;
+                                    alusel_o <= `EXE_RES_MUL;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                            endcase //case(op3)special2中
+                        end
+                        default:begin
+                        end
+                    endcase //case(op2)special2中
+                end //SPECIAL2指令
                 default:begin   //必须要加一个default，避免成为所以锁存器，即使default为空
                 end
             endcase //case(op)
@@ -359,7 +499,7 @@ module id(
         end
         else if(reg2_read_o == `ReadEna)begin
 
-        //当读地址与写地址相同，并且写使能为真时，说明发生了数据相关，这是需要旁路
+        //当读地址与写地址相同，并且写使能为真时，说明发生了数据相关，这时需要旁路
             if((reg2_addr_o==ex_waddr_i)&&(ex_wreg_i==`WriteEna))begin
                 reg2_o <= ex_wdata_i;
             end

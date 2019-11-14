@@ -33,43 +33,83 @@
 `define EXE_SRA     6'b000011           //sra的功能码
 `define EXE_SRAV    6'b000111           //srav的功能码
 
-`define EXE_MOVZ    6'b001010
-`define EXE_MOVN    6'b001011
-`define EXE_MFHI    6'b010000
-`define EXE_MTHI    6'b010001
-`define EXE_MFLO    6'b010010
-`define EXE_MTLO    6'b010011
+`define EXE_MOVZ    6'b001010           //movz的功能码
+`define EXE_MOVN    6'b001011           //movn的功能码
+`define EXE_MFHI    6'b010000           //mfhi的功能码
+`define EXE_MTHI    6'b010001           //mthi的功能码
+`define EXE_MFLO    6'b010010           //mflo的功能码
+`define EXE_MTLO    6'b010011           //mflo的功能码
 
-`define EXE_SYNC    6'b001111           //sync的功能码
-`define EXE_PREF    6'b110011           //pref的指令码
-`define EXE_NOP     6'b000000           //nop的指令码
-`define EXE_SPECIAL_INST 6'b000000      //SPECIAL类的指令码,用于在op为0的时候
+`define EXE_ADD     6'b100000           //add的功能码
+`define EXE_ADDU    6'b100001           //addu的功能码
+`define EXE_SUB     6'b100010           //sub的功能码
+`define EXE_SUBU    6'b100011           //subu的功能码
+`define EXE_SLT     6'b101010           //slt的功能码
+`define EXE_SLTU    6'b101011           //sltu的功能码
+
+`define EXE_MULT    6'b011000           //mult的功能码
+`define EXE_MULTU   6'b011001           //multu的功能码
+
+`define EXE_ADDI    6'b001000           //addi的指令码
+`define EXE_ADDIU   6'b001001           //addiu的指令码
+`define EXE_SLTI    6'b001010           //slti的指令码
+`define EXE_SLTIU   6'b001011           //sltiu的指令码
+
+//接在special2类的后面
+`define EXE_CLZ         6'b100000           //clk的功能码
+`define EXE_CLO         6'b100001           //clo的功能码
+`define EXE_MUL         6'b000010           //mul的功能码
+
+`define EXE_SYNC        6'b001111           //sync的功能码
+`define EXE_PREF        6'b110011           //pref的指令码
+`define EXE_NOP         6'b000000           //nop的指令码
+`define EXE_SPECIAL_INST    6'b000000       //SPECIAL类的指令码,用于在op为0的时候
+`define EXE_REGIMM_INST     6'b000001       //TODO:这个是干嘛的
+`define EXE_SPECIAL2_INST   6'b011100       //SPECIAL2类的指令码
 
 //AluOp
-`define EXE_AND_OP  8'b00000001     //AND控制信号
-`define EXE_OR_OP   8'b00000010     //这个是在ALU单元运用的，每一个指令有不同的ALUop，单独进行设置的，书上的控制信号是两位的，也就是只有两种情况
-`define EXE_XOR_OP  8'b00000011     //XOR
-`define EXE_NOR_OP  8'b00000100     //NOR
+`define EXE_AND_OP      8'b00000001     //AND控制信号
+`define EXE_OR_OP       8'b00000010     //这个是在ALU单元运用的，每一个指令有不同的ALUop，单独进行设置的，书上的控制信号是两位的，也就是只有两种情况
+`define EXE_XOR_OP      8'b00000011     //XOR
+`define EXE_NOR_OP      8'b00000100     //NOR
 
-`define EXE_LUI_OP  8'b00000101     //LUI
-`define EXE_SLL_OP  8'b00000110     //SLL逻辑左移
-`define EXE_SRA_OP  8'b00000111     //SRA算术右移
-`define EXE_SRL_OP  8'b00001000     //SRL逻辑右移
+`define EXE_LUI_OP      8'b00000101     //LUI
+`define EXE_SLL_OP      8'b00000110     //SLL逻辑左移
+`define EXE_SRA_OP      8'b00000111     //SRA算术右移
+`define EXE_SRL_OP      8'b00001000     //SRL逻辑右移
 
-`define EXE_MOVZ_OP 8'b00001001
-`define EXE_MOVN_OP 8'b00001010
-`define EXE_MFHI_OP 8'b00001011
-`define EXE_MFLO_OP 8'b00001100
-`define EXE_MTHI_OP 8'b00001101
-`define EXE_MTLO_OP 8'b00001110
+`define EXE_MOVZ_OP     8'b00001001     //movz rd,rs,rt; if(rt==0) rd <- rs;
+`define EXE_MOVN_OP     8'b00001010     //movn rd,rs,rt; if(rt!=0) rd <- rs;
+`define EXE_MFHI_OP     8'b00001011     //mfhi rd; rd <- hi;
+`define EXE_MFLO_OP     8'b00001100     //mflo rd; rd <- lo;
+`define EXE_MTHI_OP     8'b00001101     //mthi rs; hi <- rs;
+`define EXE_MTLO_OP     8'b00001110     //mtlo rs; lo <- rs;
 
-`define EXE_PREF_OP 8'b00001111     //PREF
+`define EXE_ADD_OP      8'b00001111     //这类运算指令都是对rs以及rt进行计算，结果存入rd中
+`define EXE_ADDU_OP     8'b00010000
+`define EXE_SUB_OP      8'b00010001
+`define EXE_SUBU_OP     8'b00010010
+`define EXE_SLT_OP      8'b00010011
+`define EXE_SLTU_OP     8'b00010100
+// `define EXE_ADDI_OP     8'b00010101  这四个没有用到，后面可以直接复制这几个
+// `define EXE_ADDIU_OP    8'b00010110
+// `define EXE_SLTI_OP     8'b00010111
+// `define EXE_SLTIU_OP    8'b00011000
+`define EXE_CLZ_OP      8'b00011001     //clz rd,rs; rd <- （rs中前面的0的个数）
+`define EXE_CLO_OP      8'b00011010
+`define EXE_MUL_OP      8'b00011011     //只保留低32位在rd中
+`define EXE_MULT_OP     8'b00011100     //高32位在HI中，低32位在LO中
+`define EXE_MULTU_OP    8'b00011101
+
+`define EXE_PREF_OP 8'b11111111     //PREF
 `define EXE_NOP_OP  8'b00000000     //这个就是流水线中的气泡
 
 //AluSel
 `define EXE_RES_LOGIC       3'b001      //用来确定运算类型的，由于现在只有 ori 操作，所以只有逻辑运算
 `define EXE_RES_MOVE        3'b010
 `define EXE_RES_SHIFT       3'b100      //shift有什么作用
+`define EXE_RES_ARITH       3'b101
+`define EXE_RES_MUL         3'b110
 `define EXE_RES_NOP         3'b000
 
 //*********** 与指令存储器ROM有关的宏定义 **********************
