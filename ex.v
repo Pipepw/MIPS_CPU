@@ -20,7 +20,7 @@ module ex(
     input [`RegBus] mem_lo_i,
     input mem_whilo_i,
     //来自ex_mem保存的数据
-    input [`DoubleRegBus] hilo_temp_i,
+    // input [`DoubleRegBus] hilo_temp_i, 发现没必要这样去绕一圈，难道有什么地方会用到这个数据？
     input [1:0] cnt_i,
 
     output reg wreg_o,
@@ -297,9 +297,9 @@ module ex(
                     stallreq_mas <= `Stop;
                 end
                 else if(cnt_i == 2'b01)begin
-                    hilo_temp_o <= {`ZeroWord,`ZeroWord};
+                    // hilo_temp_o <= {`ZeroWord,`ZeroWord};
                     cnt_o <= 2'b10;
-                    hilo_temp1 <= hilo_temp_i + {HI,LO};
+                    hilo_temp1 <= hilo_temp_o + {HI,LO};
                     stallreq_mas <= `NoStop;
                 end
                 else begin
@@ -312,9 +312,9 @@ module ex(
                     stallreq_mas <= `Stop;
                 end
                 else if(cnt_i == 2'b01)begin
-                    hilo_temp_o <= {`ZeroWord,`ZeroWord};
+                    // hilo_temp_o <= {`ZeroWord,`ZeroWord};
                     cnt_o <= 2'b10;
-                    hilo_temp1 <= hilo_temp_i + {HI,LO};
+                    hilo_temp1 <= hilo_temp_o + {HI,LO};
                     stallreq_mas <= `NoStop;
                 end
                 else begin
