@@ -42,7 +42,7 @@ module id(
     output reg [`RegBus] reg2_o,            //源操作数2
     output reg [`AluOpBus] aluop_o,         //alu控制信号
     output reg [`AluSelBus] alusel_o,       //运算类型
-    output reg [5:0] stallreq
+    output reg stallreq
     );
 
 //我和书上不同的地方，书上是直接按照op进行分类，而我是先按照指令类型进行分类，实际上这样做是多此一举
@@ -410,6 +410,34 @@ module id(
                                     reg1_read_o <= `ReadEna;
                                     reg2_read_o <= `ReadEna;
                                     wreg_o <= `WriteEna;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_MADD:  begin
+                                    aluop_o <= `EXE_MADD_OP;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteDisa;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_MADDU:  begin
+                                    aluop_o <= `EXE_MADDU_OP;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteDisa;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_MSUB:  begin
+                                    aluop_o <= `EXE_MSUB_OP;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteDisa;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_MSUBU:  begin
+                                    aluop_o <= `EXE_MSUBU_OP;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteDisa;
                                     instvalid <= `InstValid;
                                 end
                             endcase //case(op3)special2中

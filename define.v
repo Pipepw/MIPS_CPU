@@ -61,6 +61,10 @@
 `define EXE_CLZ         6'b100000           //clk的功能码
 `define EXE_CLO         6'b100001           //clo的功能码
 `define EXE_MUL         6'b000010           //mul的功能码
+`define EXE_MADD        6'b000000           //madd的功能码
+`define EXE_MADDU       6'b000001           //
+`define EXE_MSUB        6'b000100
+`define EXE_MSUBU       6'b000101
 
 `define EXE_SYNC        6'b001111           //sync的功能码
 `define EXE_PREF        6'b110011           //pref的指令码
@@ -93,10 +97,12 @@
 `define EXE_SUBU_OP     8'b00010010
 `define EXE_SLT_OP      8'b00010011
 `define EXE_SLTU_OP     8'b00010100
-// `define EXE_ADDI_OP     8'b00010101  这四个没有用到，后面可以直接复制这几个
-// `define EXE_ADDIU_OP    8'b00010110
-// `define EXE_SLTI_OP     8'b00010111
-// `define EXE_SLTIU_OP    8'b00011000
+
+`define EXE_MADD_OP     8'b00010101
+`define EXE_MADDU_OP    8'b00010110
+`define EXE_MSUB_OP     8'b00010111
+`define EXE_MSUBU_OP    8'b00011000
+
 `define EXE_CLZ_OP      8'b00011001     //clz rd,rs; rd <- （rs中前面的0的个数）
 `define EXE_CLO_OP      8'b00011010
 `define EXE_MUL_OP      8'b00011011     //只保留低32位在rd中

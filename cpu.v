@@ -95,6 +95,12 @@ module cpu(
     wire stallreq_from_id;
     wire [5:0] stall;
 
+    //ex与ex_mem的多周期圈
+    wire [1:0] cnt_ex_i;
+    wire [`DoubleRegBus] hilo_temp_ex_i;
+    wire [1:0] cnt_ex_o;
+    wire [`DoubleRegBus] hilo_temp_ex_o;
+
 /*******************每个部件的实例化************************/
     //regfile的实例化
     regfile regfile0(
@@ -160,7 +166,7 @@ module cpu(
         .reg2_o(reg2_id),
         .aluop_o(aluop_id),
         .alusel_o(alusel_id),
-        .stallreq_from_id(stallreq_from_id)
+        .stallreq(stallreq_from_id)
     );
 
     //id_ex的实例化
@@ -200,6 +206,8 @@ module cpu(
         .mem_whilo_i(whilo_mem_mem),
         .mem_hi_i(hi_mem_mem),
         .mem_lo_i(lo_mem_mem),
+        .hilo_temp_i(hilo_temp_ex_i),
+        .cnt_i(cnt_ex_i),
 
         .wreg_o(wreg_ex_mem),
         .waddr_o(waddr_ex),
@@ -207,7 +215,9 @@ module cpu(
         .whilo_o(whilo_ex),
         .hi_o(hi_ex),
         .lo_o(lo_ex),
-        .stallreq_from_ex(stallreq_from_ex)
+        .stallreq(stallreq_from_ex),
+        .hilo_temp_o(hilo_temp_ex_o),
+        .cnt_o(cnt_ex_o)
     );
 
     //ex_mem的实例化
@@ -221,13 +231,17 @@ module cpu(
         .ex_hi(hi_ex),
         .ex_lo(lo_ex),
         .stall(stall),
+        .hilo_temp_i(hilo_temp_ex_o),
+        .cnt_i(cnt_ex_o),
 
         .mem_waddr(waddr_mem),
         .mem_wdata(wdata_mem),
         .mem_wreg(wreg_mem),
         .mem_whilo(whilo_mem),
         .mem_hi(hi_mem),
-        .mem_lo(lo_mem)
+        .mem_lo(lo_mem),
+        .hilo_temp_o(hilo_temp_ex_i),
+        .cnt_o(cnt_ex_i)
     );
 
     //mem的实例化
@@ -279,6 +293,7 @@ module cpu(
     );
 
     ctrl ctrl0(
+        .rst(rst),
         .stallreq_from_ex(stallreq_from_ex),
         .stallreq_from_id(stallreq_from_id),
         .stall(stall)

@@ -19,6 +19,9 @@ module ex(
     input [`RegBus] mem_hi_i,
     input [`RegBus] mem_lo_i,
     input mem_whilo_i,
+    //来自ex_mem保存的数据
+    input [`DoubleRegBus] hilo_temp_i,
+    input [1:0] cnt_i,
 
     output reg wreg_o,
     output reg [`RegAddrBus] waddr_o,
@@ -26,7 +29,9 @@ module ex(
     output reg [`RegBus] hi_o,
     output reg [`RegBus] lo_o,
     output reg whilo_o,
-    output reg [5:0] stallreq
+    output reg stallreq,
+    output reg [`DoubleRegBus] hilo_temp_o,
+    output reg [1:0] cnt_o
 
     );
     //保存逻辑运算的结果（因为现在只有一个 ori 指令，所以只考虑这个）
@@ -46,7 +51,9 @@ module ex(
     wire [`RegBus] opdata1_mult;        //被乘数，这两个有什么用呢？
     wire [`RegBus] opdata2_mult;        //乘数，答：这两个是用来转换成正数的，只有都为正数时，其乘法的结果才是正确的
     wire [`DoubleRegBus] hilo_temp;     //临时保存乘法结果，这个结果中可能是为负的，用于接下来转成负数形式
-    reg [`DoubleRegBus] mulres;        //保存乘法的结果
+    reg [`DoubleRegBus] hilo_temp1;     //用于临时保存乘累的操作
+    reg [`DoubleRegBus] mulres;         //保存乘法的结果
+    reg [5:0] stallreq_mas;
     //对比id.v以及ex.v,可以发现：对于输出的数据，一般是在另一个块里面进行操作的
     //我觉得 alusel 存在的意义在于使不同之类的指令并行化，不然每次只有一个结果，那么输出一个结果就可以了，何必多此一举进行选择
 
@@ -248,16 +255,19 @@ module ex(
     //乘法运算
     //如果按照现实中的乘法，乘出来的结果是源码，而在计算机中应该是补码，所以需要取其补码，这个补码与上面的补码不同
     //如果是负数，那么需要对其取补码计算，只有在是有符号乘法时，才需要进行补码处理
-    assign opdata1_mult = ((aluop_i == `EXE_MULT_OP || aluop_i == `EXE_MUL_OP)
+    assign opdata1_mult = ((aluop_i == `EXE_MULT_OP || aluop_i == `EXE_MUL_OP||
+                            aluop_i == `EXE_MADD_OP || aluop_i == `EXE_MSUB_OP)
                             &&reg1_i[`RegWidth-1])?(~reg1_i+1):reg1_i;
-    assign opdata2_mult = ((aluop_i == `EXE_MULT_OP || aluop_i == `EXE_MUL_OP)
+    assign opdata2_mult = ((aluop_i == `EXE_MULT_OP || aluop_i == `EXE_MUL_OP||
+                            aluop_i == `EXE_MADD_OP || aluop_i == `EXE_MSUB_OP)
                             &&reg2_i[`RegWidth-1])?(~reg2_i+1):reg2_i;
     assign hilo_temp = opdata1_mult * opdata2_mult;
     always @(*) begin
         if(rst == `RstEna)begin
             mulres <= {`ZeroWord,`ZeroWord};
         end
-        else if(aluop_i == `EXE_MULT_OP || aluop_i == `EXE_MUL_OP) begin//有符号数乘法
+        else if(aluop_i == `EXE_MULT_OP || aluop_i == `EXE_MUL_OP||
+                aluop_i == `EXE_MADD_OP || aluop_i == `EXE_MSUB_OP) begin//有符号数乘法
             //如果异或为真，说明相乘为负数，则需要取其补码形式
             if (reg1_i[`RegWidth-1]^reg2_i[`RegWidth-1]) begin
                 mulres <= (~hilo_temp + 1);
@@ -269,6 +279,58 @@ module ex(
         else begin
             mulres <= hilo_temp;
         end
+    end
+
+    //乘累加以及乘累减运算
+    always @(*)begin
+        if(rst == `RstEna)begin
+            hilo_temp_o <= {`ZeroWord,`ZeroWord};
+            cnt_o <= 2'b00;
+            hilo_temp1 <= {`ZeroWord,`ZeroWord};
+            stallreq_mas <= `NoStop;
+        end
+        else begin
+            if(aluop_i == `EXE_MADD_OP || aluop_i == `EXE_MADDU_OP)begin
+                if(cnt_i == 2'b00)begin
+                    hilo_temp_o <= mulres;   //这个是在mulres发生变化的时候执行，所以不用担心赋值失败
+                    cnt_o <= 2'b01;
+                    stallreq_mas <= `Stop;
+                end
+                else if(cnt_i == 2'b01)begin
+                    hilo_temp_o <= {`ZeroWord,`ZeroWord};
+                    cnt_o <= 2'b10;
+                    hilo_temp1 <= hilo_temp_i + {HI,LO};
+                    stallreq_mas <= `NoStop;
+                end
+                else begin
+                end
+            end
+            else if(aluop_i == `EXE_MSUB_OP || aluop_i == `EXE_MSUBU_OP)begin
+                if(cnt_i == 2'b00)begin
+                    hilo_temp_o <= ~mulres + 1;   //是HILO减去乘的结果，所以需要对其进行取反
+                    cnt_o <= 2'b01;
+                    stallreq_mas <= `Stop;
+                end
+                else if(cnt_i == 2'b01)begin
+                    hilo_temp_o <= {`ZeroWord,`ZeroWord};
+                    cnt_o <= 2'b10;
+                    hilo_temp1 <= hilo_temp_i + {HI,LO};
+                    stallreq_mas <= `NoStop;
+                end
+                else begin
+                end
+            end
+            else begin
+                hilo_temp_o <= {`ZeroWord,`ZeroWord};
+                cnt_o <= 2'b00;
+                stallreq_mas <= `NoStop;
+            end
+        end //!rst
+    end
+
+    //暂停流水线
+    always @(*)begin
+        stallreq = stallreq_mas;
     end
 
     //根据 alusel 选择输出结果
@@ -326,6 +388,12 @@ module ex(
             hi_o <= mulres[63:32];
             lo_o <= mulres[31:0];
         end
+        else if(aluop_i == `EXE_MADD_OP || aluop_i == `EXE_MADDU_OP ||
+                aluop_i == `EXE_MSUB_OP || aluop_i == `EXE_MSUBU_OP)begin
+                    whilo_o <= `WriteEna;
+                    hi_o <= hilo_temp1[63:32];
+                    lo_o <= hilo_temp1[31:0];
+                end
         else begin
             whilo_o <= `WriteDisa;
             hi_o <= `ZeroWord;

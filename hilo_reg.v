@@ -1,23 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2019/11/12 08:58:23
-// Design Name: 
-// Module Name: hilo_reg
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
 
 `include "define.v"
 
@@ -27,7 +8,6 @@ module hilo_reg(
     input we,
     input [`RegBus] hi_i,
     input [`RegBus] lo_i,
-    input whilo_i,
 
     output reg [`RegBus] hi_o,
     output reg [`RegBus] lo_o
