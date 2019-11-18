@@ -351,6 +351,7 @@ module id(
                                     wreg_o <= `WriteEna;
                                     instvalid <= `InstValid;
                                 end
+
                                 `EXE_MULT:  begin
                                     aluop_o <= `EXE_MULT_OP;
                                     reg1_read_o <= `ReadEna;
@@ -360,6 +361,20 @@ module id(
                                 end
                                 `EXE_MULTU:  begin  //无符号数乘法运算
                                     aluop_o <= `EXE_MULTU_OP;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteDisa;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_DIV:   begin
+                                    aluop_o <= `EXE_DIV_OP;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadEna;
+                                    wreg_o <= `WriteDisa;
+                                    instvalid <= `InstValid;
+                                end
+                                `EXE_DIVU:  begin
+                                    aluop_o <= `EXE_DIVU_OP;
                                     reg1_read_o <= `ReadEna;
                                     reg2_read_o <= `ReadEna;
                                     wreg_o <= `WriteDisa;

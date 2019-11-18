@@ -22,6 +22,8 @@ module ex(
     //来自ex_mem保存的数据
     // input [`DoubleRegBus] hilo_temp_i, 发现没必要这样去绕一圈，难道有什么地方会用到这个数据？
     input [1:0] cnt_i,
+    input [`DoubleRegBus] div_result,     //未判断正负
+    input div_ready,
 
     output reg wreg_o,
     output reg [`RegAddrBus] waddr_o,
@@ -31,14 +33,18 @@ module ex(
     output reg whilo_o,
     output reg stallreq,
     output reg [`DoubleRegBus] hilo_temp_o,
-    output reg [1:0] cnt_o
-
+    output reg [1:0] cnt_o,
+    output reg div_start,
+    output reg div_annul,
+    output reg [`RegBus] div_opdata1,
+    output reg [`RegBus] div_opdata2
     );
     //保存逻辑运算的结果（因为现在只有一个 ori 指令，所以只考虑这个）
     reg[`RegBus] logicout;
     reg[`RegBus] shifters;  //移位运算的结果
     reg[`RegBus] moveres;
     reg[`RegBus] arithout;
+    reg[`DoubleRegBus] hilo_div;               //保存除法的结果
     reg[`RegBus] HI;
     reg[`RegBus] LO;
 
@@ -53,7 +59,8 @@ module ex(
     wire [`DoubleRegBus] hilo_temp;     //临时保存乘法结果，这个结果中可能是为负的，用于接下来转成负数形式
     reg [`DoubleRegBus] hilo_temp1;     //用于临时保存乘累的操作
     reg [`DoubleRegBus] mulres;         //保存乘法的结果
-    reg [5:0] stallreq_mas;
+    reg stallreq_mas;
+    reg stallreq_div;
     //对比id.v以及ex.v,可以发现：对于输出的数据，一般是在另一个块里面进行操作的
     //我觉得 alusel 存在的意义在于使不同之类的指令并行化，不然每次只有一个结果，那么输出一个结果就可以了，何必多此一举进行选择
 
@@ -256,10 +263,12 @@ module ex(
     //如果按照现实中的乘法，乘出来的结果是源码，而在计算机中应该是补码，所以需要取其补码，这个补码与上面的补码不同
     //如果是负数，那么需要对其取补码计算，只有在是有符号乘法时，才需要进行补码处理
     assign opdata1_mult = ((aluop_i == `EXE_MULT_OP || aluop_i == `EXE_MUL_OP||
-                            aluop_i == `EXE_MADD_OP || aluop_i == `EXE_MSUB_OP)
+                            aluop_i == `EXE_MADD_OP || aluop_i == `EXE_MSUB_OP||
+                            aluop_i == `EXE_DIV_OP)
                             &&reg1_i[`RegWidth-1])?(~reg1_i+1):reg1_i;
     assign opdata2_mult = ((aluop_i == `EXE_MULT_OP || aluop_i == `EXE_MUL_OP||
-                            aluop_i == `EXE_MADD_OP || aluop_i == `EXE_MSUB_OP)
+                            aluop_i == `EXE_MADD_OP || aluop_i == `EXE_MSUB_OP||
+                            aluop_i == `EXE_DIV_OP)
                             &&reg2_i[`RegWidth-1])?(~reg2_i+1):reg2_i;
     assign hilo_temp = opdata1_mult * opdata2_mult;
     always @(*) begin
@@ -269,7 +278,7 @@ module ex(
         else if(aluop_i == `EXE_MULT_OP || aluop_i == `EXE_MUL_OP||
                 aluop_i == `EXE_MADD_OP || aluop_i == `EXE_MSUB_OP) begin//有符号数乘法
             //如果异或为真，说明相乘为负数，则需要取其补码形式
-            if (reg1_i[`RegWidth-1]^reg2_i[`RegWidth-1]) begin
+            if (reg1_i[`RegWidth-1] ^ reg2_i[`RegWidth-1]) begin
                 mulres <= (~hilo_temp + 1);
             end
             else begin
@@ -328,9 +337,44 @@ module ex(
         end //!rst
     end
 
+    //除法运算
+    always @(*)begin
+        if(rst == `RstEna)begin
+            hilo_div <= {`ZeroWord,`ZeroWord};
+            div_annul <= 1'b0;
+            div_start <= 1'b0;
+            div_opdata1 <= `ZeroWord;
+            div_opdata2 <= `ZeroWord;
+        end
+        else begin
+            div_opdata1 <= opdata1_mult;    //借用乘法的补码
+            div_opdata2 <= opdata2_mult;
+            if(aluop_i == `EXE_DIV_OP)begin
+                div_start <= 1'b1;
+                stallreq_div <= `Stop;      //只能在里面进行阻塞
+                if(reg1_i[31] ^ reg2_i[31])begin        //异或为真表示为负数，对商进行取补码操作
+                    hilo_div[31:0] <= ~div_result[31:0] + 1;
+                end
+                else begin
+                    hilo_div[31:0] <= div_result[31:0];
+                end
+                if(reg1_i[31] ^ div_result[63])begin    //当余数与被除数异号时进行取补操作
+                    hilo_div[63:32] <= ~div_result[63:32] + 1;
+                end
+                else begin
+                    hilo_div[63:32] <= div_result[63:32];
+                end
+            end
+            else if(aluop_i == `EXE_DIVU_OP)begin
+                div_start <= 1'b1;
+                stallreq_div <= `Stop;
+                hilo_div <= div_result;
+            end
+        end
+    end
     //暂停流水线
     always @(*)begin
-        stallreq = stallreq_mas;
+        stallreq = stallreq_mas || stallreq_div;
     end
 
     //根据 alusel 选择输出结果
@@ -390,10 +434,21 @@ module ex(
         end
         else if(aluop_i == `EXE_MADD_OP || aluop_i == `EXE_MADDU_OP ||
                 aluop_i == `EXE_MSUB_OP || aluop_i == `EXE_MSUBU_OP)begin
-                    whilo_o <= `WriteEna;
-                    hi_o <= hilo_temp1[63:32];
-                    lo_o <= hilo_temp1[31:0];
-                end
+            whilo_o <= `WriteEna;
+            hi_o <= hilo_temp1[63:32];
+            lo_o <= hilo_temp1[31:0];
+        end
+        else if(aluop_i == `EXE_DIV_OP || aluop_i == `EXE_DIVU_OP)begin
+            if(div_ready)begin      //当准备好了之后才进行写入操作
+                div_start <= 1'b0;
+                stallreq_div <= `NoStop;    //完成之后，取消阻塞操作
+                whilo_o <= `WriteEna;
+                hi_o <= hilo_div[63:32];
+                lo_o <= hilo_div[31:0];
+            end
+            else begin
+            end
+        end
         else begin
             whilo_o <= `WriteDisa;
             hi_o <= `ZeroWord;

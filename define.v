@@ -51,6 +51,8 @@
 
 `define EXE_MULT    6'b011000           //mult的功能码
 `define EXE_MULTU   6'b011001           //multu的功能码
+`define EXE_DIV     6'b011010           //div的功能码
+`define EXE_DIVU    6'b011011           //divu的功能码
 
 `define EXE_ADDI    6'b001000           //addi的指令码
 `define EXE_ADDIU   6'b001001           //addiu的指令码
@@ -109,6 +111,9 @@
 `define EXE_MULT_OP     8'b00011100     //高32位在HI中，低32位在LO中
 `define EXE_MULTU_OP    8'b00011101
 
+`define EXE_DIV_OP      8'b00011110     //div rs,rt; {HI,LO} <- rs/rt
+`define EXE_DIVU_OP     8'b00011111     //和乘法一样，先换成正数，最后通过异或判断正负，无符号数则不用管
+
 `define EXE_PREF_OP 8'b11111111     //PREF
 `define EXE_NOP_OP  8'b00000000     //这个就是流水线中的气泡
 
@@ -135,3 +140,9 @@
 `define RegNum          32          //通用寄存器的数量
 `define RegNumLog2      5           //寻址通用寄存器使用的地址位数
 `define NOPRegAddr      5'b00000
+
+//************ 与除法相关的宏定义 *********************************
+`define DivFree         2'b00
+`define DivZero         2'b01
+`define DivOn           2'b10
+`define DivEnd          2'b11

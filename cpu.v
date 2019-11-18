@@ -101,6 +101,14 @@ module cpu(
     wire [1:0] cnt_ex_o;
     // wire [`DoubleRegBus] hilo_temp_ex_o;
 
+    //ex与div之间的交易
+    wire [`RegBus] div_opdata1;
+    wire [`RegBus] div_opdata2;
+    wire div_start;
+    wire div_annul;
+    wire [`DoubleRegBus] div_result;
+    wire div_ready;
+
 /*******************每个部件的实例化************************/
     //regfile的实例化
     regfile regfile0(
@@ -208,6 +216,9 @@ module cpu(
         .mem_lo_i(lo_mem_mem),
         // .hilo_temp_i(hilo_temp_ex_i),
         .cnt_i(cnt_ex_i),
+        //div的输入
+        .div_result(div_result),
+        .div_ready(div_ready),
 
         .wreg_o(wreg_ex_mem),
         .waddr_o(waddr_ex),
@@ -217,7 +228,13 @@ module cpu(
         .lo_o(lo_ex),
         .stallreq(stallreq_from_ex),
         // .hilo_temp_o(hilo_temp_ex_o),
-        .cnt_o(cnt_ex_o)
+        .cnt_o(cnt_ex_o),
+
+        //向div的输出
+        .div_start(div_start),
+        .div_annul(div_annul),   //目前默认为0，暂时用不到
+        .div_opdata1(div_opdata1),
+        .div_opdata2(div_opdata2)
     );
 
     //ex_mem的实例化
@@ -297,5 +314,17 @@ module cpu(
         .stallreq_from_ex(stallreq_from_ex),
         .stallreq_from_id(stallreq_from_id),
         .stall(stall)
+    );
+
+    div div0(
+        .clk(clk),
+        .rst(rst),
+        .opdata1_i(div_opdata1),
+        .opdata2_i(div_opdata2),
+        .start_i(div_start),
+        .annul_i(1'b0),
+
+        .result_o(div_result),
+        .ready_o(div_ready)
     );
 endmodule
