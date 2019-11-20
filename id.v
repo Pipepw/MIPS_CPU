@@ -29,6 +29,9 @@ module id(
     input [`RegAddrBus] mem_waddr_i,
     input mem_wreg_i,
 
+    //来自id_ex的输入，判断指令是否为延迟指令
+    input is_delay_inst_i,
+
     //输出到regfile的信息
     output reg reg1_read_o,                 //第一个读使能信号
     output reg reg2_read_o,                 //第二个读使能信号
@@ -42,21 +45,35 @@ module id(
     output reg [`RegBus] reg2_o,            //源操作数2
     output reg [`AluOpBus] aluop_o,         //alu控制信号
     output reg [`AluSelBus] alusel_o,       //运算类型
-    output reg stallreq
+    output reg is_delay_inst_o,
+    output reg [`InstAddrBus] link_addr_o,  //返回地址
+    output reg stallreq,
+
+    //送回pc的数据
+    output reg branch_flag_o,
+    output reg [`InstAddrBus] branch_addr_inst_o,
+
+    //取id_ex绕了一个周期后返回，用来判断是否为延迟指令
+    output reg next_inst_is_delay_o
     );
 
 //我和书上不同的地方，书上是直接按照op进行分类，而我是先按照指令类型进行分类，实际上这样做是多此一举
 //并且将数据传输到regfile以及从regfile中读取数据是同时进行的，或者说是要放到一起进行的所以应该用非阻塞赋值
 
-    //先把所有情况的指令段分离出来，TODO:为什么是这样划分的？看到后面才会明白（应该是因为不同的指令需要不同的指令段）
+    //先把所有情况的指令段分离出来，为什么是这样划分的？看到后面才会明白（应该是因为不同的指令需要不同的指令段）
     wire[5:0] op = inst_i[31:26];   //op操作段
     wire[4:0] op2 = inst_i[10:6];   //shamt，并不是这样的，这几个代表的是几个不同等级的指令
     wire[5:0] op3 = inst_i[5:0];    //funct
     wire[4:0] op4 = inst_i[20:16];  //rt
     //立即数，等待后面扩展为32位之后再赋值
     reg [`RegBus] imm;
+    wire [`RegBus] pc_plus_4;         //用来暂时存储下一条指令的地址，pc_i + 4;
+    wire [`RegBus] pc_plus_8;
     //指示指令是否有效，没考虑到这个
     reg instvalid;
+
+    assign pc_plus_4 = (pc_i + 4);
+    assign pc_plus_8 = (pc_i + 8);
 
 /**********************一、对指令进行译码*****************************/
 
@@ -72,6 +89,10 @@ module id(
             alusel_o <= `EXE_RES_NOP;
             imm <= 32'h0;
             instvalid <= `InstValid;
+            branch_flag_o <= 1'b0;
+            link_addr_o <= `ZeroWord;
+            next_inst_is_delay_o <= 1'b0;
+            branch_addr_inst_o <= `ZeroWord;
         end
         else begin
         //先对共用的部分进行初始化，主要是对输出到执行阶段的部分进行赋值，只是进行初始化，设置一些默认值
@@ -85,6 +106,10 @@ module id(
             reg1_addr_o <= inst_i[25:21];   //rs寄存器
             reg2_addr_o <= inst_i[20:16];   //rt寄存器
             imm <= `ZeroWord;
+            branch_flag_o <= 1'b0;
+            link_addr_o <= `ZeroWord;
+            next_inst_is_delay_o <= 1'b0;
+            branch_addr_inst_o <= `ZeroWord;
 
             case(op)                    //这里面主要是对控制信号以及地址进行操作
                 `EXE_ANDI:  begin
@@ -177,6 +202,91 @@ module id(
                     wreg_o <= `WriteEna;
                     waddr_o <= inst_i[20:16];
                     instvalid <= `InstValid;
+                end
+                //转移指令
+                `EXE_J: begin
+                    aluop_o <= `EXE_J_OP;
+                    alusel_o <= `EXE_RES_JUMP_BRANCH;
+                    reg1_read_o <= `ReadDisa;
+                    reg2_read_o <= `ReadDisa;
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
+                    branch_flag_o <= 1'b1;
+                    next_inst_is_delay_o <= 1'b1;
+                    branch_addr_inst_o <= {pc_plus_4[31:28],inst_i[25:0],2'b00};
+                end
+                `EXE_JAL:   begin
+                    aluop_o <= `EXE_JAL_OP;
+                    alusel_o <= `EXE_RES_JUMP_BRANCH;
+                    reg1_read_o <= `ReadDisa;
+                    reg2_read_o <= `ReadDisa;
+                    wreg_o <= `WriteEna;
+                    waddr_o <= 5'b11111;    //指定将返回地址存储到$31中
+                    instvalid <= `InstValid;
+                    branch_flag_o <= 1'b1;
+                    next_inst_is_delay_o <= 1'b1;
+                    branch_addr_inst_o <= {pc_plus_4[31:28],inst_i[25:0],2'b00};
+                    link_addr_o <= pc_plus_8;
+                end
+                `EXE_BEQ:   begin
+                    aluop_o <= `EXE_BEQ_OP;
+                    alusel_o <= `EXE_RES_JUMP_BRANCH;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
+                    if(reg1_o == reg2_o)begin   //相等才转移
+                        branch_flag_o <= 1'b1;
+                        next_inst_is_delay_o <= 1'b1;
+                        branch_addr_inst_o <= pc_plus_4 + {{14{inst_i[15]}},inst_i[15:0],2'b00};    //左移两位后符号扩展为32位，再与延迟槽指令地址相加
+                    end
+                    else begin
+                    end
+                end
+                `EXE_BGTZ:   begin
+                    aluop_o <= `EXE_BGTZ_OP;
+                    alusel_o <= `EXE_RES_JUMP_BRANCH;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
+                    if(reg1_o[31] == 1'b0 && reg1_o != `ZeroWord)begin     //书上不是直接用的大小与符号进行比较的，因为这样比较，不论正负都是大于0的，因为补码
+                        branch_flag_o <= 1'b1;
+                        next_inst_is_delay_o <= 1'b1;
+                        branch_addr_inst_o <= pc_plus_4 + {{14{inst_i[15]}},inst_i[15:0],2'b00};
+                    end
+                    else begin
+                    end
+                end
+                `EXE_BLEZ:   begin
+                    aluop_o <= `EXE_BLEZ_OP;
+                    alusel_o <= `EXE_RES_JUMP_BRANCH;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
+                    if(reg1_o[31] == 1'b1 || reg1_o == `ZeroWord)begin
+                        branch_flag_o <= 1'b1;
+                        next_inst_is_delay_o <= 1'b1;
+                        branch_addr_inst_o <= pc_plus_4 + {{14{inst_i[15]}},inst_i[15:0],2'b00};
+                    end
+                    else begin
+                    end
+                end
+                `EXE_BNE:   begin
+                    aluop_o <= `EXE_BNE_OP;
+                    alusel_o <= `EXE_RES_JUMP_BRANCH;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
+                    if(reg1_o != reg2_o)begin
+                        branch_flag_o <= 1'b1;
+                        next_inst_is_delay_o <= 1'b1;
+                        branch_addr_inst_o <= pc_plus_4 + {{14{inst_i[15]}},inst_i[15:0],2'b00};
+                    end
+                    else begin
+                    end
                 end
 
                 //R型指令
@@ -381,12 +491,37 @@ module id(
                                     instvalid <= `InstValid;
                                 end
 
+                                //跳转指令
+                                `EXE_JR:    begin
+                                    aluop_o <= `EXE_JR_OP;
+                                    alusel_o <= `EXE_RES_JUMP_BRANCH;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadDisa;
+                                    wreg_o <= `WriteDisa;   //不需要保存数据到regfile中
+                                    instvalid <= `InstValid;
+                                    branch_flag_o <= 1'b1;
+                                    next_inst_is_delay_o <= 1'b1;
+                                    branch_addr_inst_o <= reg1_o;
+                                end
+                                `EXE_JALR:  begin
+                                    aluop_o <= `EXE_JALR_OP;
+                                    alusel_o <= `EXE_RES_JUMP_BRANCH;
+                                    reg1_read_o <= `ReadEna;
+                                    reg2_read_o <= `ReadDisa;
+                                    wreg_o <= `WriteEna;    //最后要将地址写入到寄存器中
+                                    instvalid <= `InstValid;
+                                    branch_flag_o <= 1'b1;
+                                    link_addr_o <= pc_plus_8;       //需要将返回地址保存下来TODO:为什么不直接将其作为输出数据
+                                    next_inst_is_delay_o <= 1'b1;
+                                    branch_addr_inst_o <= reg1_o;   //可以直接在这里面使用，也就是说改变之后会马上作用到这里
+                                end
+
                                 //空指令,nop以及snop不用单独处理，一种特殊的移位操作
                                 `EXE_SYNC:  begin
                                     aluop_o <= `EXE_NOP_OP;
                                     alusel_o <= `EXE_RES_NOP;
                                     reg1_read_o <= `ReadDisa;
-                                    reg2_read_o <= `ReadEna;//TODO:为什么都是将reg2设置为可读
+                                    reg2_read_o <= `ReadEna;//TODO:为什么空指令都是将reg2设置为可读
                                     wreg_o <= `WriteDisa;
                                     instvalid <= `InstValid;
                                 end
@@ -461,6 +596,76 @@ module id(
                         end
                     endcase //case(op2)special2中
                 end //SPECIAL2指令
+
+                //REGIMM类型指令
+                `EXE_REGIMM_INST:    begin
+                    case(op3)
+                        `EXE_BLTZ:   begin
+                            aluop_o <= `EXE_BLTZ_OP;
+                            alusel_o <= `EXE_RES_JUMP_BRANCH;
+                            reg1_read_o <= `ReadEna;
+                            reg2_read_o <= `ReadDisa;
+                            wreg_o <= `WriteDisa;
+                            instvalid <= `InstValid;
+                            if(reg1_o[31] == 1'b1)begin
+                                branch_flag_o <= 1'b1;
+                                next_inst_is_delay_o <= 1'b1;
+                                branch_addr_inst_o <= pc_plus_4 + {{14{inst_i[15]}},inst_i[15:0],2'b00};
+                            end
+                            else begin
+                            end
+                        end
+                        `EXE_BLTZAL:   begin
+                            aluop_o <= `EXE_BLTZAL_OP;
+                            alusel_o <= `EXE_RES_JUMP_BRANCH;
+                            reg1_read_o <= `ReadEna;
+                            reg2_read_o <= `ReadDisa;
+                            instvalid <= `InstValid;
+                            if(reg1_o[31] == 1'b1)begin    //小于时转移，并保存返回地址
+                                wreg_o <= `WriteEna;
+                                waddr_o <= 5'b11111;
+                                branch_flag_o <= 1'b1;
+                                next_inst_is_delay_o <= 1'b1;
+                                branch_addr_inst_o <= pc_plus_4 + {{14{inst_i[15]}},inst_i[15:0],2'b00};
+                                link_addr_o <= pc_plus_8;
+                            end
+                            else begin
+                            end
+                        end
+                        `EXE_BGEZ:   begin
+                            aluop_o <= `EXE_BGEZ_OP;
+                            alusel_o <= `EXE_RES_JUMP_BRANCH;
+                            reg1_read_o <= `ReadEna;
+                            reg2_read_o <= `ReadDisa;
+                            wreg_o <= `WriteDisa;
+                            instvalid <= `InstValid;
+                            if(reg1_o[31] == 1'b0)begin
+                                branch_flag_o <= 1'b1;
+                                next_inst_is_delay_o <= 1'b1;
+                                branch_addr_inst_o <= pc_plus_4 + {{14{inst_i[15]}},inst_i[15:0],2'b00};
+                            end
+                            else begin
+                            end
+                        end
+                        `EXE_BGEZAL:   begin
+                            aluop_o <= `EXE_BGEZAL_OP;
+                            alusel_o <= `EXE_RES_JUMP_BRANCH;
+                            reg1_read_o <= `ReadEna;
+                            reg2_read_o <= `ReadDisa;
+                            instvalid <= `InstValid;
+                            if(reg1_o[31] == 1'b0)begin
+                                wreg_o <= `WriteEna;//TODO:书上将wwl放到了外面进行赋值，但是如果不满足条件的话，为什么还是将返回地址写入呢？
+                                waddr_o <= 5'b11111;
+                                branch_flag_o <= 1'b1;
+                                next_inst_is_delay_o <= 1'b1;
+                                branch_addr_inst_o <= pc_plus_4 + {{14{inst_i[15]}},inst_i[15:0],2'b00};
+                                link_addr_o <= pc_plus_8;
+                            end
+                            else begin
+                            end
+                        end
+                    endcase
+                end //EXE_REGIMM_INST指令类型
                 default:begin   //必须要加一个default，避免成为所以锁存器，即使default为空
                 end
             endcase //case(op)
@@ -560,6 +765,16 @@ module id(
         end
         else begin
             reg2_o <= `ZeroWord;
+        end
+    end
+
+    //为is_delay进行赋值操作，放在外面是因为没必要因为这一个而执行某个always块中的所有部分
+    always @(*) begin
+        if(rst == `RstEna)begin
+            is_delay_inst_o <= 1'b0;
+        end
+        else begin
+            is_delay_inst_o <= is_delay_inst_i;
         end
     end
 endmodule

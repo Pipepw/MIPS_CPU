@@ -58,6 +58,21 @@
 `define EXE_ADDIU   6'b001001           //addiu的指令码
 `define EXE_SLTI    6'b001010           //slti的指令码
 `define EXE_SLTIU   6'b001011           //sltiu的指令码
+        //跳转指令
+`define EXE_JR      6'b001000           //jr的功能码
+`define EXE_JALR    6'b001001           //jarl的功能码
+`define EXE_J       6'b000010           //j的指令码
+`define EXE_JAL     6'b000011           //jal的指令码
+        //分支指令，都是通过指令码控制的
+`define EXE_BEQ     6'b000100
+`define EXE_BGTZ    6'b000111
+`define EXE_BLEZ    6'B000110
+`define EXE_BNE     6'b000101
+//跟在REGIMM后面的分支指令
+`define EXE_BLTZ    6'b00000
+`define EXE_BLTZAL  6'b10000
+`define EXE_BGEZ    6'b00001
+`define EXE_BGEZAL  6'b10001
 
 //接在special2类的后面
 `define EXE_CLZ         6'b100000           //clk的功能码
@@ -114,6 +129,19 @@
 `define EXE_DIV_OP      8'b00011110     //div rs,rt; {HI,LO} <- rs/rt
 `define EXE_DIVU_OP     8'b00011111     //和乘法一样，先换成正数，最后通过异或判断正负，无符号数则不用管
 
+`define EXE_JR_OP       8'b00100000     //jr rs;
+`define EXE_JALR_OP     8'b00100001     //jalr rs;|| jalr rs,rd;
+`define EXE_J_OP        8'b00100010     //j target;
+`define EXE_JAL_OP      8'b00100011     //jal target;
+`define EXE_BEQ_OP      8'b00100100     //beq rs,rt,offset; 相等则转移
+`define EXE_BGTZ_OP     8'b00100101     //bgtz rs,offset;   大于0则转移
+`define EXE_BLEZ_OP     8'b00100110     //blez rs,offset;   小于等于0则转移
+`define EXE_BNE_OP      8'b00100111     //bne rs,rt,offset; 不相等则转移
+`define EXE_BLTZ_OP     8'b00101000     //bltz rs,offset;   rs的值小于0则转移
+`define EXE_BLTZAL_OP   8'b00101001     //bltzal rs,offset; 同上，保存返回地址到$31中
+`define EXE_BGEZ_OP     8'b00101010     //bgez rs,offset;   rs的值大于等于0则转移
+`define EXE_BGEZAL_OP   8'b00101011     //bgezal rs,offset; 同上
+
 `define EXE_PREF_OP 8'b11111111     //PREF
 `define EXE_NOP_OP  8'b00000000     //这个就是流水线中的气泡
 
@@ -123,6 +151,7 @@
 `define EXE_RES_SHIFT       3'b100      //shift有什么作用
 `define EXE_RES_ARITH       3'b101
 `define EXE_RES_MUL         3'b110
+`define EXE_RES_JUMP_BRANCH 3'b111
 `define EXE_RES_NOP         3'b000
 
 //*********** 与指令存储器ROM有关的宏定义 **********************

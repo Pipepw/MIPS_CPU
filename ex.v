@@ -24,6 +24,9 @@ module ex(
     input [1:0] cnt_i,
     input [`DoubleRegBus] div_result,     //未判断正负
     input div_ready,
+    //转移指令相关
+    input is_delay_i,           //至少暂时没用上，也不知道之后会不会用上
+    input [`InstAddrBus] link_addr,
 
     output reg wreg_o,
     output reg [`RegAddrBus] waddr_o,
@@ -401,6 +404,9 @@ module ex(
             end
             `EXE_RES_MUL:begin
                 wdata_o <= mulres[31:0];
+            end
+            `EXE_RES_JUMP_BRANCH:begin
+                wdata_o <= link_addr;
             end
             default: begin
                 wdata_o <= `ZeroWord;
