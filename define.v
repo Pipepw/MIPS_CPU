@@ -87,7 +87,7 @@
 `define EXE_PREF        6'b110011           //pref的指令码
 `define EXE_NOP         6'b000000           //nop的指令码
 `define EXE_SPECIAL_INST    6'b000000       //SPECIAL类的指令码,用于在op为0的时候
-`define EXE_REGIMM_INST     6'b000001       //TODO:这个是干嘛的
+`define EXE_REGIMM_INST     6'b000001       //REGIMM类的指令码
 `define EXE_SPECIAL2_INST   6'b011100       //SPECIAL2类的指令码
 
 //AluOp

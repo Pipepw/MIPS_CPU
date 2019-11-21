@@ -2,7 +2,7 @@
 
 `include "define.v"
 
-module pc_reg(//实际上只完成了简单的指令加4的功能以及清零的功能
+module pc_reg(//实际上只完成了简单的指令加4的功能以及清零的功能，也不需要其他功能了，更多的操作是在id中进行的
     input clk,
     input rst,
     input [5:0] stall,  //暂停信号
@@ -15,7 +15,7 @@ module pc_reg(//实际上只完成了简单的指令加4的功能以及清零的
     always @(posedge clk)begin
         if(rst==`RstEna)begin
             ce<=`ChipDisa; //复位的时候指令存储器禁用
-        end//这样做是因为在两个不同的always里面，所以需要一个额外的通信
+        end//这样做是因为在两个不同的always里面，所以需要一个额外的通信，TODO:为什么不放到一个always里面呢？
         else begin
             ce<=`ChipEna;//复位结束后，指令存储器使能，一个过程中只能有一个操作
         end

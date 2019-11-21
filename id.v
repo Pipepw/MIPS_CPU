@@ -1,11 +1,11 @@
 `timescale 1ns / 1ps
 
 //与pc和regfile组合，完成译码功能，取数也是在这时候开始的
-//所谓的译码就是将指令中需要的东西准备好，根据指令来进行操作，现在只考虑ori指令
+//所谓的译码就是将指令中需要的东西准备好
 //相关的操作就是根据指令来对regfile进行读写操作，只是一个中间件
 //MIPS的指令类型：（具体的操作在alu单元中）
 //1.R型指令
-//2.I型指令，没有看到对立即数的传递呢？
+//2.I型指令
 //3.J型指令
 
 `include"define.v"
@@ -13,7 +13,7 @@
 module id(
     input rst,
     input [`InstAddrBus] pc_i,              //从pc传输来的指令地址
-    input [`InstBus] inst_i,                //用地址从regfile中得到的指令
+    input [`InstBus] inst_i,                //用地址从regfile中得到的指令，果然留着是有用的，传递到ex
 
     //读取的Regfile的值
     input [`RegBus] reg1_data_i,            //从regfile输入的第一个读输入
@@ -45,8 +45,9 @@ module id(
     output reg [`RegBus] reg2_o,            //源操作数2
     output reg [`AluOpBus] aluop_o,         //alu控制信号
     output reg [`AluSelBus] alusel_o,       //运算类型
-    output reg is_delay_inst_o,
+    output reg is_delay_inst_o,             //当前指令是否为延迟槽中的指令，实际上没有什么用
     output reg [`InstAddrBus] link_addr_o,  //返回地址
+    // output reg [`InstAddrBus] inst_o,      //指令
     output reg stallreq,
 
     //送回pc的数据
@@ -60,16 +61,16 @@ module id(
 //我和书上不同的地方，书上是直接按照op进行分类，而我是先按照指令类型进行分类，实际上这样做是多此一举
 //并且将数据传输到regfile以及从regfile中读取数据是同时进行的，或者说是要放到一起进行的所以应该用非阻塞赋值
 
-    //先把所有情况的指令段分离出来，为什么是这样划分的？看到后面才会明白（应该是因为不同的指令需要不同的指令段）
-    wire[5:0] op = inst_i[31:26];   //op操作段
-    wire[4:0] op2 = inst_i[10:6];   //shamt，并不是这样的，这几个代表的是几个不同等级的指令
-    wire[5:0] op3 = inst_i[5:0];    //funct
-    wire[4:0] op4 = inst_i[20:16];  //rt
+    //不同指令对应的指令段不同，op > op2 > op3 > op4，对指令的判断顺序
+    wire[5:0] op = inst_i[31:26];
+    wire[4:0] op2 = inst_i[10:6];
+    wire[5:0] op3 = inst_i[5:0];
+    wire[4:0] op4 = inst_i[20:16];
     //立即数，等待后面扩展为32位之后再赋值
     reg [`RegBus] imm;
-    wire [`RegBus] pc_plus_4;         //用来暂时存储下一条指令的地址，pc_i + 4;
-    wire [`RegBus] pc_plus_8;
-    //指示指令是否有效，没考虑到这个
+    wire [`RegBus] pc_plus_4;       //用来暂时存储下一条指令的地址，pc_i + 4;
+    wire [`RegBus] pc_plus_8;       //用来存储返回地址
+    //指示指令是否有效，没考虑到这个，实际上暂时没用到，后面异常处理可能会用上
     reg instvalid;
 
     assign pc_plus_4 = (pc_i + 4);
@@ -98,7 +99,7 @@ module id(
         //先对共用的部分进行初始化，主要是对输出到执行阶段的部分进行赋值，只是进行初始化，设置一些默认值
             aluop_o <= `EXE_NOP_OP;     //先初始化为气泡
             alusel_o <= `EXE_RES_NOP;
-            waddr_o <= inst_i[15:11];      //不同的指令，这部分的意义不同啊，rd寄存器
+            waddr_o <= inst_i[15:11];      //默认为rd寄存器
             wreg_o <= `WriteDisa;
             instvalid <= `InstValid;
             reg1_read_o <= `ReadDisa;
@@ -127,7 +128,6 @@ module id(
                     alusel_o <= `EXE_RES_LOGIC;
                     //读取数据
                     reg1_read_o <= `ReadEna;    //ori操作只需要rs
-                    // reg1_o <= reg1_data_i;  书上读取数据是在另一个always 里面进行的，因为敏感列表不一样，并且那边要时刻准备着运行，所以这样做
                     reg2_read_o <= `ReadDisa;
                     imm <= {16'b0,inst_i[15:0]};
                     wreg_o <= `WriteEna;
@@ -154,7 +154,7 @@ module id(
                     waddr_o <= inst_i[20:16];       //写入的地址是rt
                     instvalid <= `InstValid;
                 end
-                `EXE_PREF:  begin   //TODO:不知道pref和sync这两个指令有什么用
+                `EXE_PREF:  begin   //TODO:不知道pref指令有什么用
                     aluop_o <= `EXE_NOP_OP;
                     alusel_o <= `EXE_RES_NOP;
                     reg1_read_o <= `ReadDisa;
@@ -511,7 +511,7 @@ module id(
                                     wreg_o <= `WriteEna;    //最后要将地址写入到寄存器中
                                     instvalid <= `InstValid;
                                     branch_flag_o <= 1'b1;
-                                    link_addr_o <= pc_plus_8;       //需要将返回地址保存下来TODO:为什么不直接将其作为输出数据
+                                    link_addr_o <= pc_plus_8;       //需要将返回地址保存下来
                                     next_inst_is_delay_o <= 1'b1;
                                     branch_addr_inst_o <= reg1_o;   //可以直接在这里面使用，也就是说改变之后会马上作用到这里
                                 end
@@ -521,7 +521,7 @@ module id(
                                     aluop_o <= `EXE_NOP_OP;
                                     alusel_o <= `EXE_RES_NOP;
                                     reg1_read_o <= `ReadDisa;
-                                    reg2_read_o <= `ReadEna;//TODO:为什么空指令都是将reg2设置为可读
+                                    reg2_read_o <= `ReadDisa;//为什么空指令都是将reg2设置为可读，答：在ex阶段都没有对其进行处理，是什么都无所谓
                                     wreg_o <= `WriteDisa;
                                     instvalid <= `InstValid;
                                 end
@@ -599,7 +599,7 @@ module id(
 
                 //REGIMM类型指令
                 `EXE_REGIMM_INST:    begin
-                    case(op3)
+                    case(op4)
                         `EXE_BLTZ:   begin
                             aluop_o <= `EXE_BLTZ_OP;
                             alusel_o <= `EXE_RES_JUMP_BRANCH;
@@ -654,7 +654,7 @@ module id(
                             reg2_read_o <= `ReadDisa;
                             instvalid <= `InstValid;
                             if(reg1_o[31] == 1'b0)begin
-                                wreg_o <= `WriteEna;//TODO:书上将wwl放到了外面进行赋值，但是如果不满足条件的话，为什么还是将返回地址写入呢？
+                                wreg_o <= `WriteEna;//书上将wwl放到了外面进行赋值，但是如果不满足条件的话，为什么还是将返回地址写入呢？答：没有影响
                                 waddr_o <= 5'b11111;
                                 branch_flag_o <= 1'b1;
                                 next_inst_is_delay_o <= 1'b1;
