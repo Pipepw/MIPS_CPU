@@ -64,24 +64,36 @@
 `define EXE_J       6'b000010           //j的指令码
 `define EXE_JAL     6'b000011           //jal的指令码
         //分支指令，都是通过指令码控制的
-`define EXE_BEQ     6'b000100
-`define EXE_BGTZ    6'b000111
-`define EXE_BLEZ    6'B000110
-`define EXE_BNE     6'b000101
+`define EXE_BEQ     6'b000100           //指令码
+`define EXE_BGTZ    6'b000111           //指令码
+`define EXE_BLEZ    6'B000110           //指令码
+`define EXE_BNE     6'b000101           //指令码
+        //加载存储指令
+`define EXE_LB      6'b100000           //LB的指令码
+`define EXE_LBU     6'b100100           //LBU的指令码
+`define EXE_LH      6'b100001           //LH的指令码
+`define EXE_LHU     6'b100101           //LHU的指令码
+`define EXE_LW      6'b100011           //LW的指令码
+`define EXE_LWL     6'b100010           //LWL的指令码
+`define EXE_LWR     6'b100110           //LWR的指令码
+`define EXE_SB      6'b101000           //SB的指令码
+`define EXE_SH      6'b101001           //SH的指令码
+`define EXE_SW      6'b101011           //SW的指令码
+`define EXE_SWL     6'b101010           //SWL的指令码
+`define EXE_SWR     6'b101110           //SWR的指令码
 //跟在REGIMM后面的分支指令
-`define EXE_BLTZ    6'b00000
-`define EXE_BLTZAL  6'b10000
-`define EXE_BGEZ    6'b00001
-`define EXE_BGEZAL  6'b10001
-
+`define EXE_BLTZ    6'b00000            //op4的功能码
+`define EXE_BLTZAL  6'b10000            //op4的功能码
+`define EXE_BGEZ    6'b00001            //op4的功能码
+`define EXE_BGEZAL  6'b10001            //op4的功能码
 //接在special2类的后面
 `define EXE_CLZ         6'b100000           //clk的功能码
 `define EXE_CLO         6'b100001           //clo的功能码
 `define EXE_MUL         6'b000010           //mul的功能码
 `define EXE_MADD        6'b000000           //madd的功能码
-`define EXE_MADDU       6'b000001           //
-`define EXE_MSUB        6'b000100
-`define EXE_MSUBU       6'b000101
+`define EXE_MADDU       6'b000001           //s2后面的功能码
+`define EXE_MSUB        6'b000100           //s2后面的功能码
+`define EXE_MSUBU       6'b000101           //s2后面的功能码
 
 `define EXE_SYNC        6'b001111           //sync的功能码
 `define EXE_PREF        6'b110011           //pref的指令码
@@ -128,7 +140,7 @@
 
 `define EXE_DIV_OP      8'b00011110     //div rs,rt; {HI,LO} <- rs/rt
 `define EXE_DIVU_OP     8'b00011111     //和乘法一样，先换成正数，最后通过异或判断正负，无符号数则不用管
-
+    //转移分支指令
 `define EXE_JR_OP       8'b00100000     //jr rs;
 `define EXE_JALR_OP     8'b00100001     //jalr rs;|| jalr rs,rd;
 `define EXE_J_OP        8'b00100010     //j target;
@@ -141,6 +153,19 @@
 `define EXE_BLTZAL_OP   8'b00101001     //bltzal rs,offset; 同上，保存返回地址到$31中
 `define EXE_BGEZ_OP     8'b00101010     //bgez rs,offset;   rs的值大于等于0则转移
 `define EXE_BGEZAL_OP   8'b00101011     //bgezal rs,offset; 同上
+    //加载存储指令
+`define EXE_LB_OP       8'b00101100     //lb rt,offset(base)读取一个字节放到rt中，符号扩展
+`define EXE_LBU_OP      8'b00101101     //同上，无符号扩展
+`define EXE_LH_OP       8'b00101110     //读取半个字
+`define EXE_LHU_OP      8'b00101111     //同上
+`define EXE_LW_OP       8'b00110000     //读取一个字
+`define EXE_LWL_OP      8'b00110001     //从左边开始读取这个字剩下的数据，比如读取地址为5，则读取剩下的6 7
+`define EXE_LWR_OP      8'b00110010     //读取包含这个字的数据，比如读取地址为5，则读取包含的4 5
+`define EXE_SB_OP       8'b00110011     //sb rt,offset(base)将rt中的最低字节存放到对应地址中
+`define EXE_SH_OP       8'b00110100     //最低半个字
+`define EXE_SW_OP       8'b00110101     //直接将rt放进去就行了
+`define EXE_SWL_OP      8'b00110110     //将rt中的左边部分放进去，具体多少位由地址决定，这部分和lwl是类似的
+`define EXE_SWR_OP      8'b00110111     //右边部分，假设存放的地址是5，则将右边半个字存放到4 5中
 
 `define EXE_PREF_OP 8'b11111111     //PREF
 `define EXE_NOP_OP  8'b00000000     //这个就是流水线中的气泡
@@ -148,10 +173,11 @@
 //AluSel
 `define EXE_RES_LOGIC       3'b001      //用来确定运算类型的，由于现在只有 ori 操作，所以只有逻辑运算
 `define EXE_RES_MOVE        3'b010
-`define EXE_RES_SHIFT       3'b100      //shift有什么作用
-`define EXE_RES_ARITH       3'b101
-`define EXE_RES_MUL         3'b110
-`define EXE_RES_JUMP_BRANCH 3'b111
+`define EXE_RES_SHIFT       3'b011      //shift有什么作用
+`define EXE_RES_ARITH       3'b100
+`define EXE_RES_MUL         3'b101
+`define EXE_RES_JUMP_BRANCH 3'b110
+`define EXE_RES_LOAD_STORE  3'b111
 `define EXE_RES_NOP         3'b000
 
 //*********** 与指令存储器ROM有关的宏定义 **********************
@@ -175,3 +201,12 @@
 `define DivZero         2'b01
 `define DivOn           2'b10
 `define DivEnd          2'b11
+
+//***加载存储的宏定义
+`define IsWrite         1'b1
+`define IsRead          1'b0
+`define DataAddrBus     31:0        //地址总线宽度
+`define DataBus         31:0        //数据总线宽度
+`define DataMemNum      131017      //RAM的大小，单位是字，这里是128K word
+`define DataMemNumlog2  15          //实际使用的地址宽度
+`define ByteWidth       7:0         //一个字的宽度，这里是8bit

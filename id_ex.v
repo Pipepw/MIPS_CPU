@@ -14,6 +14,7 @@ module id_ex(
     input id_is_delay,
     input next_is_delay,     //流向id的，告诉id这条指令是延迟指令，传回去已经是一个周期之后了，所以是next
     input [`InstAddrBus] id_link_addr,
+    input [`InstBus] id_inst,
 
     output reg [`AluSelBus] ex_alusel,
     output reg [`AluOpBus] ex_aluop,
@@ -23,7 +24,8 @@ module id_ex(
     output reg [`RegBus] ex_reg2,
     output reg ex_is_delay,
     output reg is_delay,
-    output reg [`InstAddrBus] ex_link_addr
+    output reg [`InstAddrBus] ex_link_addr,
+    output reg [`InstBus] ex_inst
     );
     always @(posedge clk)begin
         if(rst == `RstEna)begin
@@ -36,6 +38,7 @@ module id_ex(
             ex_is_delay <= 1'b0;
             is_delay <= 1'b0;
             ex_link_addr <= `ZeroWord;
+            ex_inst <= `ZeroWord;
         end
         else if(stall[2] == `Stop && stall[3] == `NoStop)begin
             ex_alusel <= `EXE_RES_NOP;
@@ -47,6 +50,7 @@ module id_ex(
             ex_is_delay <= 1'b0;
             is_delay <= 1'b0;
             ex_link_addr <= `ZeroWord;
+            ex_inst <= `ZeroWord;
         end
         else if(stall[2] == `NoStop)begin
             ex_alusel <= id_alusel;
@@ -58,6 +62,7 @@ module id_ex(
             ex_is_delay <= id_is_delay;
             is_delay <= next_is_delay;
             ex_link_addr <= id_link_addr;
+            ex_inst <= id_inst;
         end
         else begin
         end

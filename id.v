@@ -47,7 +47,7 @@ module id(
     output reg [`AluSelBus] alusel_o,       //运算类型
     output reg is_delay_inst_o,             //当前指令是否为延迟槽中的指令，实际上没有什么用
     output reg [`InstAddrBus] link_addr_o,  //返回地址
-    // output reg [`InstAddrBus] inst_o,      //指令
+    output [`InstBus] inst_o,      //指令
     output reg stallreq,
 
     //送回pc的数据
@@ -57,6 +57,9 @@ module id(
     //取id_ex绕了一个周期后返回，用来判断是否为延迟指令
     output reg next_inst_is_delay_o
     );
+
+    //对inst_o进行赋值
+    assign inst_o = inst_i;
 
 //我和书上不同的地方，书上是直接按照op进行分类，而我是先按照指令类型进行分类，实际上这样做是多此一举
 //并且将数据传输到regfile以及从regfile中读取数据是同时进行的，或者说是要放到一起进行的所以应该用非阻塞赋值
@@ -112,6 +115,7 @@ module id(
             next_inst_is_delay_o <= 1'b0;
             branch_addr_inst_o <= `ZeroWord;
 
+            //指令码控制
             case(op)                    //这里面主要是对控制信号以及地址进行操作
                 `EXE_ANDI:  begin
                     aluop_o <= `EXE_AND_OP;
@@ -287,6 +291,111 @@ module id(
                     end
                     else begin
                     end
+                end
+
+                //加载存储指令
+                `EXE_LB:    begin
+                    aluop_o <= `EXE_LB_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;    //rs中存放的是base，所以需要进行读取
+                    reg2_read_o <= `ReadDisa;
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];   //将读取结果放到rt寄存器中
+                    instvalid <= `InstValid;
+                end
+                `EXE_LBU:    begin
+                    aluop_o <= `EXE_LBU_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadDisa;
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+                `EXE_LH:    begin
+                    aluop_o <= `EXE_LH_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadDisa;
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+                `EXE_LHU:    begin
+                    aluop_o <= `EXE_LHU_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadDisa;
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+                `EXE_LW:    begin
+                    aluop_o <= `EXE_LW_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadDisa;
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+                `EXE_LWL:    begin
+                    aluop_o <= `EXE_LWL_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;    //因为只是修改其中的一部分，所以需要进行读取，也就是后面会用连接的方式进行放入rt
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+                `EXE_LWR:    begin
+                    aluop_o <= `EXE_LWR_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+                `EXE_SB:    begin
+                    aluop_o <= `EXE_SB_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;    //将rt中的值存放到内存中
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
+                end
+                `EXE_SH:    begin
+                    aluop_o <= `EXE_SH_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
+                end
+                `EXE_SW:    begin
+                    aluop_o <= `EXE_SW_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
+                end
+                `EXE_SWL:    begin
+                    aluop_o <= `EXE_SWL_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
+                end
+                `EXE_SWR:    begin
+                    aluop_o <= `EXE_SWR_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
                 end
 
                 //R型指令

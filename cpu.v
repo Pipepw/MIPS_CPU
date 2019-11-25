@@ -1,20 +1,22 @@
 `timescale 1ns / 1ps
 
 `include"define.v"
-`include"ex_mem.v"
-`include"ex.v"
-`include"id_ex.v"
-`include"id.v"
-`include"if_id.v"
-`include"mem_wb.v"
-`include"mem.v"
+
 
 module cpu(
     input clk,rst,
     input [`InstBus] rom_data_i,        //存储器传输进来的指令
 
     output rom_ce_o,                    //通过控制pc，从而控制整个处理器
-    output [`InstAddrBus] rom_addr_o    //指令存储器的输入地址
+    output [`InstAddrBus] rom_addr_o,   //指令存储器的输入地址
+
+    //连接到ram的接口
+    input [`RegBus] ram_data_o,         //输出到mem的数据
+    output [`RegBus] ram_addr_i,        //地址
+    output [`RegBus] ram_data_i,        //加载存储的数据
+    output ram_we_i,                    //控制加载或存储
+    output [3:0] ram_sel_i,             //控制加载存储地址
+    output ram_ce_i                     //控制是否能读
     );
 
 /********************每个部件之间的连线******************/
@@ -48,7 +50,8 @@ module cpu(
     wire wreg_id;                   //写使能信号
     wire next_is_delay;             //下一条指令为延迟指令，最后返回id
     wire is_delay;                  //最后流向ex的延迟指令信号（感觉没啥用
-    wire [`InstAddrBus]link_addr;   //流向ex的返回地址
+    wire [`InstAddrBus] link_addr;   //流向ex的返回地址
+    wire [`InstBus] inst_id;      //在ex用来获取地址
 
     //id_ex的输出与ex的输入
     wire [`AluOpBus] aluop_ex;      //alu控制
@@ -59,6 +62,7 @@ module cpu(
     wire wreg_ex;                   //写使能信号
     wire is_delay_ex;
     wire [`InstAddrBus] link_addr_ex;
+    wire [`InstBus] inst_ex;                   //指令
     //向id的输出
     wire is_delay_inst;             //告诉id，为延迟指令
 
@@ -69,6 +73,9 @@ module cpu(
     wire [`RegBus] hi_ex;
     wire [`RegBus] lo_ex;
     wire whilo_ex;
+    wire [`AluOpBus] aluop_ex_mem;  //指令类型
+    wire [`RegBus] reg2_ex_mem;     //rt的数据
+    wire [`RegBus] mem_addr_ex_mem; //控制ram的地址
 
     //ex_mem的输出与mem的输入
     wire [`RegBus] wdata_mem;        //写入的数据
@@ -77,6 +84,9 @@ module cpu(
     wire [`RegBus] hi_mem;
     wire [`RegBus] lo_mem;
     wire whilo_mem;
+    wire [`AluOpBus] aluop_mem;     //指令类型
+    wire [`RegBus] reg2_mem;        //rt的数据
+    wire [`RegBus] mem_addr_mem;    //控制ram的地址
 
     //mem的输出与mem_wb的输入
     wire [`RegBus] wdata_mem_mem;    //写入的数据
@@ -196,7 +206,8 @@ module cpu(
         .stallreq(stallreq_from_id),
         .next_inst_is_delay_o(next_is_delay),
         .is_delay_inst_o(is_delay),
-        .link_addr_o(link_addr)
+        .link_addr_o(link_addr),
+        .inst_o(inst_id)
     );
 
     //id_ex的实例化
@@ -213,6 +224,7 @@ module cpu(
         .next_is_delay(next_is_delay),
         .id_is_delay(is_delay),
         .id_link_addr(link_addr),
+        .id_inst(inst_id),
 
         .ex_alusel(alusel_ex),
         .ex_aluop(aluop_ex),
@@ -222,6 +234,7 @@ module cpu(
         .ex_reg2(reg2_ex),
         .ex_is_delay(is_delay_ex),
         .ex_link_addr(link_addr_ex),
+        .ex_inst(inst_ex),
         //向id的输出
         .is_delay(is_delay_inst)
     );
@@ -237,6 +250,7 @@ module cpu(
         .waddr_i(reg_addr_ex),
         .is_delay_i(is_delay_ex),
         .link_addr(link_addr_ex),
+        .inst_i(inst_ex),
         .hi_i(hi),
         .lo_i(lo),
         .wb_whilo_i(whilo_hilo),
@@ -264,7 +278,10 @@ module cpu(
         .div_start(div_start),
         .div_annul(div_annul),   //目前默认为0，暂时用不到
         .div_opdata1(div_opdata1),
-        .div_opdata2(div_opdata2)
+        .div_opdata2(div_opdata2),
+        .reg2_o(reg2_ex_mem),
+        .aluop_o(aluop_ex_mem),
+        .mem_addr_o(mem_addr_ex_mem)
     );
 
     //ex_mem的实例化
@@ -280,6 +297,9 @@ module cpu(
         .stall(stall),
         // .hilo_temp_i(hilo_temp_ex_o),
         .cnt_i(cnt_ex_o),
+        .ex_aluop(aluop_ex_mem),
+        .ex_mem_addr(mem_addr_ex_mem),
+        .ex_reg2(reg2_ex_mem),
 
         .mem_waddr(waddr_mem),
         .mem_wdata(wdata_mem),
@@ -288,7 +308,10 @@ module cpu(
         .mem_hi(hi_mem),
         .mem_lo(lo_mem),
         // .hilo_temp_o(hilo_temp_ex_i),
-        .cnt_o(cnt_ex_i)
+        .cnt_o(cnt_ex_i),
+        .mem_aluop(aluop_mem),
+        .mem_mem_addr(mem_addr_mem),
+        .mem_reg2(reg2_mem)
     );
 
     //mem的实例化
@@ -300,13 +323,22 @@ module cpu(
         .hi_i(hi_mem),
         .lo_i(lo_mem),
         .whilo_i(whilo_mem),
+        .aluop_i(aluop_mem),
+        .mem_addr_i(mem_addr_mem),
+        .reg2_i(reg2_mem),
+        .mem_data_i(ram_data_o),
 
         .wreg_o(wreg_mem_mem),
         .waddr_o(waddr_mem_mem),
         .wdata_o(wdata_mem_mem),
         .whilo_o(whilo_mem_mem),
         .hi_o(hi_mem_mem),
-        .lo_o(lo_mem_mem)
+        .lo_o(lo_mem_mem),
+        .mem_data_o(ram_data_i),
+        .mem_addr_o(ram_addr_i),
+        .mem_we_o(ram_we_i),
+        .mem_ce_o(ram_ce_i),
+        .mem_sel_o(ram_sel_i)
     );
 
     //mem_wb的实例化

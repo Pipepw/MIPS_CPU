@@ -27,6 +27,7 @@ module ex(
     //转移指令相关
     input is_delay_i,           //至少暂时没用上，也不知道之后会不会用上
     input [`InstAddrBus] link_addr,
+    input [`InstBus] inst_i,
 
     output reg wreg_o,
     output reg [`RegAddrBus] waddr_o,
@@ -40,7 +41,11 @@ module ex(
     output reg div_start,
     output reg div_annul,
     output reg [`RegBus] div_opdata1,
-    output reg [`RegBus] div_opdata2
+    output reg [`RegBus] div_opdata2,
+    //传输到mem阶段进行处理
+    output [`RegBus] reg2_o,
+    output [`AluOpBus] aluop_o,
+    output [`RegBus] mem_addr_o     //这个可以通过inst进行获取，需要在ex阶段计算出最终的值，base以及offset
     );
     //保存逻辑运算的结果（因为现在只有一个 ori 指令，所以只考虑这个）
     reg[`RegBus] logicout;
@@ -380,9 +385,14 @@ module ex(
         stallreq = stallreq_mas || stallreq_div;
     end
 
+    //加载存储指令，在这里没有对写入regfile相关的进行处理，留到mem阶段进行处理了
+    assign reg2_o = reg2_i;
+    assign aluop_o = aluop_i;
+    assign mem_addr_o = reg1_i + {{16{inst_i[15]}},inst_i[15:0]};   //base + 符号扩展后的offset
+
     //根据 alusel 选择输出结果
     always @(*)begin
-        waddr_o <= waddr_i;
+        waddr_o <= waddr_i;     //不论指令是什么，都将地址进行输出
         if(((aluop_i == `EXE_ADD_OP) || (aluop_i == `EXE_SUB_OP))&&(ov_sum == `True_v))begin
             wreg_o <= `WriteDisa;
         end
