@@ -23,6 +23,7 @@ module id(
     input [`RegBus] ex_wdata_i,
     input [`RegAddrBus] ex_waddr_i,
     input ex_wreg_i,
+    input [`AluOpBus] ex_aluop_i,
 
     //来自mem阶段的旁路数据，当间隔一条指令发生数据发生数据冲突时
     input [`RegBus] mem_wdata_i,
@@ -48,7 +49,7 @@ module id(
     output reg is_delay_inst_o,             //当前指令是否为延迟槽中的指令，实际上没有什么用
     output reg [`InstAddrBus] link_addr_o,  //返回地址
     output [`InstBus] inst_o,      //指令
-    output reg stallreq,
+    output reg stallreq,                    //用于解决beq与lw这类指令之间的数据冲突
 
     //送回pc的数据
     output reg branch_flag_o,
@@ -75,9 +76,17 @@ module id(
     wire [`RegBus] pc_plus_8;       //用来存储返回地址
     //指示指令是否有效，没考虑到这个，实际上暂时没用到，后面异常处理可能会用上
     reg instvalid;
+    //判断上一条指令是否为load指令以及判断是否需要阻塞
+    reg stallreq_for_reg1;
+    reg stallreq_for_reg2;
+    wire inst_is_load;
 
     assign pc_plus_4 = (pc_i + 4);
     assign pc_plus_8 = (pc_i + 8);
+    //没有将ll以及sc加入进去
+    assign inst_is_load = (ex_aluop_i == `EXE_LB_OP || ex_aluop_i == `EXE_LBU_OP || ex_aluop_i == `EXE_LH_OP ||
+                            ex_aluop_i == `EXE_LHU_OP || ex_aluop_i == `EXE_LW_OP || ex_aluop_i == `EXE_LWL_OP ||
+                            ex_aluop_i == `EXE_LWR_OP)?1'b1:1'b0;
 
 /**********************一、对指令进行译码*****************************/
 
@@ -884,6 +893,40 @@ module id(
         end
         else begin
             is_delay_inst_o <= is_delay_inst_i;
+        end
+    end
+
+    //处理加载存储指令与转移指令之间的数据冲突，主要是两者相邻时进行阻塞操作，对reg1进行判断
+    always @(*)begin
+        stallreq_for_reg1 <= `NoStop;
+        if(rst == `RstEna)begin
+            stallreq_for_reg1 <= `NoStop;
+        end
+        else begin
+            if(inst_is_load == 1'b1 && reg1_read_o == `ReadEna && reg1_addr_o == ex_waddr_i)begin
+                stallreq_for_reg1 <= `Stop;
+            end
+        end
+    end
+    //对reg2进行判断，不放在一起是因为这两个是并行的操作
+    always @(*)begin
+        stallreq_for_reg2 <= `NoStop;
+        if(rst == `RstEna)begin
+            stallreq_for_reg2 <= `NoStop;
+        end
+        else begin
+            if(inst_is_load == 1'b1 && reg2_read_o == `ReadEna && reg2_addr_o == ex_waddr_i)begin
+                stallreq_for_reg2 <= `Stop;
+            end
+        end
+    end
+    //对阻塞进行赋值
+    always @(*)begin
+        if(rst == `RstEna)begin
+            stallreq <= `NoStop;
+        end
+        else begin
+            stallreq <= stallreq_for_reg1 | stallreq_for_reg2;
         end
     end
 endmodule

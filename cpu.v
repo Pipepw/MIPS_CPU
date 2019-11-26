@@ -182,6 +182,7 @@ module cpu(
         .ex_wdata_i(wdata_ex),
         .ex_waddr_i(waddr_ex),
         .ex_wreg_i(wreg_ex_mem),
+        .ex_aluop_i(aluop_ex_mem),  //从ex将aluop旁路回id
         .mem_wdata_i(wdata_mem_mem),
         .mem_waddr_i(waddr_mem_mem),
         .mem_wreg_i(wreg_mem_mem),
