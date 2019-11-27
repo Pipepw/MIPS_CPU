@@ -108,7 +108,7 @@
 `define EXE_XOR_OP      8'b00000011     //XOR
 `define EXE_NOR_OP      8'b00000100     //NOR
 
-`define EXE_LUI_OP      8'b00000101     //LUI
+`define EXE_LUI_OP      8'b00000101     //lui rt,imm   将立即数保存到rt的高16位
 `define EXE_SLL_OP      8'b00000110     //SLL逻辑左移
 `define EXE_SRA_OP      8'b00000111     //SRA算术右移
 `define EXE_SRL_OP      8'b00001000     //SRL逻辑右移

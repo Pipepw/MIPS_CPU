@@ -273,7 +273,7 @@ module cpu(
         .hi_o(hi_ex),
         .lo_o(lo_ex),
         .stallreq(stallreq_from_ex),
-        // .hilo_temp_o(hilo_temp_ex_o),
+        .hilo_temp_o(hilo_temp_ex_o),  //实际上是没有用的，不过为了端口匹配，没有删去
         .cnt_o(cnt_ex_o),
         //向div的输出
         .div_start(div_start),
