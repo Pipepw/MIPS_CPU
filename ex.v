@@ -69,6 +69,8 @@ module ex(
     reg [`DoubleRegBus] mulres;         //保存乘法的结果
     reg stallreq_mas;
     reg stallreq_div;
+    wire [`RegBus] hilo_div_temp1;
+    wire [`RegBus] hilo_div_temp2;
     //对比id.v以及ex.v,可以发现：对于输出的数据，一般是在另一个块里面进行操作的
     //我觉得 alusel 存在的意义在于使不同之类的指令并行化，不然每次只有一个结果，那么输出一个结果就可以了，何必多此一举进行选择
 
@@ -346,6 +348,8 @@ module ex(
     end
 
     //除法运算
+    assign hilo_div_temp1 = (reg1_i[31] ^ reg2_i[31])?(~div_result[31:0] + 1):div_result[31:0];
+    assign hilo_div_temp2 = (reg1_i[31] ^ div_result[63])?(~div_result[63:32] + 1):div_result[63:32];
     always @(*)begin
         if(rst == `RstEna)begin
             hilo_div <= {`ZeroWord,`ZeroWord};
@@ -360,23 +364,25 @@ module ex(
             if(aluop_i == `EXE_DIV_OP)begin
                 div_start <= 1'b1;
                 stallreq_div <= `Stop;      //只能在里面进行阻塞
-                if(reg1_i[31] ^ reg2_i[31])begin        //异或为真表示为负数，对商进行取补码操作
-                    hilo_div[31:0] <= ~div_result[31:0] + 1;
+                hilo_div[31:0] <= hilo_div_temp1;
+                hilo_div[63:32] <= hilo_div_temp2;
+                if(div_ready)begin      //当准备好了之后才进行写入操作
+                    div_start <= 1'b0;
+                    stallreq_div <= `NoStop;    //完成之后，取消阻塞操作
                 end
                 else begin
-                    hilo_div[31:0] <= div_result[31:0];
-                end
-                if(reg1_i[31] ^ div_result[63])begin    //当余数与被除数异号时进行取补操作
-                    hilo_div[63:32] <= ~div_result[63:32] + 1;
-                end
-                else begin
-                    hilo_div[63:32] <= div_result[63:32];
                 end
             end
             else if(aluop_i == `EXE_DIVU_OP)begin
                 div_start <= 1'b1;
                 stallreq_div <= `Stop;
                 hilo_div <= div_result;
+                if(div_ready)begin      //当准备好了之后才进行写入操作
+                    div_start <= 1'b0;
+                    stallreq_div <= `NoStop;    //完成之后，取消阻塞操作
+                end
+                else begin
+                end
             end
         end
     end
@@ -455,15 +461,9 @@ module ex(
             lo_o <= hilo_temp1[31:0];
         end
         else if(aluop_i == `EXE_DIV_OP || aluop_i == `EXE_DIVU_OP)begin
-            if(div_ready)begin      //当准备好了之后才进行写入操作
-                div_start <= 1'b0;
-                stallreq_div <= `NoStop;    //完成之后，取消阻塞操作
-                whilo_o <= `WriteEna;
-                hi_o <= hilo_div[63:32];
-                lo_o <= hilo_div[31:0];
-            end
-            else begin
-            end
+            whilo_o <= `WriteEna;
+            hi_o <= hilo_div[63:32];
+            lo_o <= hilo_div[31:0];
         end
         else begin
             whilo_o <= `WriteDisa;
