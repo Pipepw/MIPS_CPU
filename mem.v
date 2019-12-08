@@ -15,6 +15,11 @@ module mem(
     input [`RegBus] reg2_i,             //写入ram的数据
     //来自ram的数据
     input [`RegBus] mem_data_i,         //放进rt的数据
+    //来自LLbit_reg的输入
+    input LLbit_i,
+    //来自mem_wb的旁路（用于 sc 指令）
+    input wb_LLbit_we_i,
+    input wb_LLbit_value_i,
 
     output reg wreg_o,
     output reg [`RegAddrBus] waddr_o,
@@ -22,6 +27,9 @@ module mem(
     output reg [`RegBus] hi_o,
     output reg [`RegBus] lo_o,
     output reg whilo_o,
+    //通过mem_wb输出到LLbit_reg的数据
+    output reg LLbit_we_o,
+    output reg LLbit_value_o,
     //输出到ram的数据
     output reg [`RegBus] mem_data_o,    //存储到ram的数据
     output reg [`RegBus] mem_addr_o,    //存放的地址
@@ -32,9 +40,25 @@ module mem(
     );
     wire [1:0] n;                       //l r 类型指令，数据的位数
     wire [`RegBus] mem_addr;            //用来存放对齐后的地址
+    reg LLbit;      //用于保存LLbit的最新值，这样就可以不用在后面进行判断，从而减少重复的操作
 
     assign n = 4 - mem_addr_i[1:0];
     assign mem_addr = mem_addr_i - mem_addr_i[1:0];   //减去最低两位后，保持最低两位为0
+
+    //更新LLbit的值
+    always @(*)begin
+        if(rst == `RstEna)begin
+            LLbit <= 1'b0;
+        end
+        else begin
+            if(wb_LLbit_we_i == 1'b1)begin
+                LLbit <= wb_LLbit_value_i;
+            end
+            else begin
+                LLbit <= LLbit_i;
+            end
+        end
+    end
     always @(*)begin
         if(rst == `RstEna)begin
             wreg_o <= `WriteDisa;
@@ -305,6 +329,35 @@ module mem(
                             mem_sel_o <= 4'b1111;
                         end
                     endcase
+                end
+                `EXE_LL_OP: begin       //对比lw指令，只是多了对LLbit_reg的操作
+                    mem_data_o <= `ZeroWord;
+                    mem_addr_o <= mem_addr;     //书上都是用的原始的地址，我用的是处理之后的地址，可能是后面不太一样，暂时先不改，后面看情况再说
+                    mem_sel_o <= 4'b1111;       //读取四个字节（一个字）
+                    mem_we_o <= `IsRead;
+                    mem_ce_o <= `ChipEna;
+                    wreg_o <= `WriteEna;
+                    wdata_o <= mem_data_i;
+                    waddr_o <= waddr_i;
+                    //正式操作，主要是控制LLbit_reg的信号，这是对mem_wb新增的端口
+                    LLbit_we_o <= 1'b1;
+                    LLbit_value_o <= 1'b1;
+                end
+                `EXE_SC_OP: begin           //对比sb指令，只是多了个判断以及对LLbit_reg的操作
+                    if(LLbit == 1'b1)begin
+                        wdata_o <= `ZeroWord;
+                        wreg_o <= `WriteDisa;
+                        mem_addr_o <= mem_addr;
+                        mem_we_o <= `IsWrite;
+                        mem_ce_o <= `ChipEna;
+                        mem_sel_o <= 4'b1111;
+                        mem_data_o <= reg2_i;
+                        LLbit_we_o <= 1'b1;
+                        LLbit_value_o <= 1'b0;
+                    end
+                    else begin
+                        wdata_o <= 32'b0;
+                    end
                 end
                 default:    begin               //当不是加载存储指令时
                     wreg_o <= wreg_i;

@@ -95,16 +95,23 @@ module cpu(
     wire [`RegBus] hi_mem_mem;
     wire [`RegBus] lo_mem_mem;
     wire whilo_mem_mem;
+    wire LLbit_we_mem_mem;
+    wire LLbit_value_mem_mem;
 
     //mem_wb的输出与regfile的输入
     wire [`RegBus] wdata_reg;        //写入的数据
     wire [`RegAddrBus] waddr_reg;    //写入的寄存器地址
     wire wreg_reg;                   //写使能信号
-
     //mem_wb的输出与hilo_reg的输入
     wire [`RegBus] hi_hilo;
     wire [`RegBus] lo_hilo;
     wire whilo_hilo;
+    //mem_wb的输出与LLbit_reg的输入
+    wire LLbit_we;
+    wire LLbit_value;
+
+    //LLbit_reg的输出与mem的输入
+    wire LLbit;
 
     //hilo_reg的输出与ex的输入
     wire [`RegBus] hi;
@@ -328,6 +335,9 @@ module cpu(
         .mem_addr_i(mem_addr_mem),
         .reg2_i(reg2_mem),
         .mem_data_i(ram_data_o),
+        .LLbit_i(LLbit),
+        .wb_LLbit_we_i(LLbit_we),
+        .wb_LLbit_value_i(LLbit_value),
 
         .wreg_o(wreg_mem_mem),
         .waddr_o(waddr_mem_mem),
@@ -339,7 +349,9 @@ module cpu(
         .mem_addr_o(ram_addr_i),
         .mem_we_o(ram_we_i),
         .mem_ce_o(ram_ce_i),
-        .mem_sel_o(ram_sel_i)
+        .mem_sel_o(ram_sel_i),
+        .LLbit_we_o(LLbit_we_mem_mem),
+        .LLbit_value_o(LLbit_value_mem_mem)
     );
 
     //mem_wb的实例化
@@ -353,13 +365,17 @@ module cpu(
         .mem_hi(hi_mem_mem),
         .mem_lo(lo_mem_mem),
         .stall(stall),
+        .mem_LLbit_we(LLbit_we_mem_mem),
+        .mem_LLbit_value(LLbit_value_mem_mem),
 
         .wb_reg(wreg_reg),
         .wb_waddr(waddr_reg),
         .wb_wdata(wdata_reg),
         .wb_whilo(whilo_hilo),
         .wb_hi(hi_hilo),
-        .wb_lo(lo_hilo)
+        .wb_lo(lo_hilo),
+        .wb_LLbit_we(LLbit_we),
+        .wb_LLbit_value(LLbit_value)
     );
 
     hilo_reg hilo_reg0(
@@ -389,5 +405,14 @@ module cpu(
 
         .result_o(div_result),
         .ready_o(div_ready)
+    );
+
+    LLbit_reg LLbit_reg0(
+        .clk(clk),
+        .rst(rst),
+        .flush(1'b0),       //暂时默认没有异常发生
+        .we(LLbit_we),
+        .LLbit_i(LLbit_value),
+        .LLbit_o(LLbit)
     );
 endmodule

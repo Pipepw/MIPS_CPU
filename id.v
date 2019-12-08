@@ -369,7 +369,7 @@ module id(
                 `EXE_SB:    begin
                     aluop_o <= `EXE_SB_OP;
                     alusel_o <= `EXE_RES_LOAD_STORE;
-                    reg1_read_o <= `ReadEna;
+                    reg1_read_o <= `ReadEna;    //rs中的值作为基地址
                     reg2_read_o <= `ReadEna;    //将rt中的值存放到内存中
                     wreg_o <= `WriteDisa;
                     instvalid <= `InstValid;
@@ -400,6 +400,23 @@ module id(
                 end
                 `EXE_SWR:    begin
                     aluop_o <= `EXE_SWR_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadEna;
+                    wreg_o <= `WriteDisa;
+                    instvalid <= `InstValid;
+                end
+                `EXE_LL:    begin
+                    aluop_o <= `EXE_LL_OP;
+                    alusel_o <= `EXE_RES_LOAD_STORE;
+                    reg1_read_o <= `ReadEna;
+                    reg2_read_o <= `ReadDisa;
+                    wreg_o <= `WriteEna;
+                    waddr_o <= inst_i[20:16];
+                    instvalid <= `InstValid;
+                end
+                `EXE_SC:    begin
+                    aluop_o <= `EXE_SC_OP;
                     alusel_o <= `EXE_RES_LOAD_STORE;
                     reg1_read_o <= `ReadEna;
                     reg2_read_o <= `ReadEna;

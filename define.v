@@ -81,6 +81,8 @@
 `define EXE_SW      6'b101011           //SW的指令码
 `define EXE_SWL     6'b101010           //SWL的指令码
 `define EXE_SWR     6'b101110           //SWR的指令码
+`define EXE_LL      6'b110000           //LL的指令码
+`define EXE_SC      6'b111000           //SC的指令码
 //跟在REGIMM后面的分支指令
 `define EXE_BLTZ    6'b00000            //op4的功能码
 `define EXE_BLTZAL  6'b10000            //op4的功能码
@@ -166,6 +168,8 @@
 `define EXE_SW_OP       8'b00110101     //直接将rt放进去就行了
 `define EXE_SWL_OP      8'b00110110     //将rt中的左边部分放进去，具体多少位由地址决定，这部分和lwl是类似的
 `define EXE_SWR_OP      8'b00110111     //右边部分，假设存放的地址是5，则将右边半个字存放到4 5中
+`define EXE_LL_OP       8'b00111000     //ll rt,offset(base)只是多了对LLbit寄存器的处理
+`define EXE_SC_OP       8'b00111001     //sc rt,offset(base)
 
 `define EXE_PREF_OP 8'b11111111     //PREF
 `define EXE_NOP_OP  8'b00000000     //这个就是流水线中的气泡
