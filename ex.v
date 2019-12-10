@@ -28,6 +28,14 @@ module ex(
     input is_delay_i,           //至少暂时没用上，也不知道之后会不会用上
     input [`InstAddrBus] link_addr,
     input [`InstBus] inst_i,
+    //协处理器访问指令
+    input [`RegBus] cp0_reg_data_i,
+    input [`RegBus] wb_cp0_reg_data,        //wb阶段的旁路
+    input [`RegAddrBus] wb_cp0_reg_write_addr,
+    input wb_cp0_reg_we,
+    input [`RegBus] mem_cp0_reg_data,       //mem阶段的旁路
+    input [`RegAddrBus] mem_cp0_reg_write_addr,
+    input mem_cp0_reg_we,
 
     output reg wreg_o,
     output reg [`RegAddrBus] waddr_o,
@@ -45,7 +53,12 @@ module ex(
     //传输到mem阶段进行处理
     output [`RegBus] reg2_o,
     output [`AluOpBus] aluop_o,
-    output [`RegBus] mem_addr_o     //这个可以通过inst进行获取，需要在ex阶段计算出最终的值，base以及offset
+    output [`RegBus] mem_addr_o,        //这个可以通过inst进行获取，需要在ex阶段计算出最终的值，base以及offset
+    //协处理器
+    output [`RegAddrBus] cp0_reg_read_addr_o,     //直接读取协处理器
+    output reg [`RegBus] cp0_reg_data_o,
+    output reg [`RegAddrBus] cp0_reg_write_addr_o,
+    output reg cp0_reg_we_o
     );
     //保存逻辑运算的结果（因为现在只有一个 ori 指令，所以只考虑这个）
     reg[`RegBus] logicout;
@@ -55,6 +68,7 @@ module ex(
     reg[`DoubleRegBus] hilo_div;               //保存除法的结果
     reg[`RegBus] HI;
     reg[`RegBus] LO;
+    reg[`RegBus] CP0_reg_data;
 
     wire ov_sum;
     // wire reg1_eq_reg2;                  //相等，相等有什么用呢？答：没用到
@@ -131,7 +145,7 @@ module ex(
             moveres <= `ZeroWord;
         end
         else begin
-            moveres <= `ZeroWord;   //TODO:为什么要在这里加一个赋0，试一下不加会怎么样
+            moveres <= `ZeroWord;
             case(aluop_i)
                 `EXE_MFHI_OP:   begin
                     moveres <= HI;
@@ -144,6 +158,9 @@ module ex(
                 end
                 `EXE_MOVN_OP:   begin
                     moveres <= reg1_i;
+                end
+                `EXE_MFC0_OP:   begin
+                    moveres <= CP0_reg_data;
                 end
                 default:begin
                 end
@@ -471,6 +488,26 @@ module ex(
             lo_o <= `ZeroWord;
         end
     end
+    //流向CP0的数据
+    always @(*)begin
+        if(rst == `RstEna)begin
+            cp0_reg_data_o <= `ZeroWord;
+            cp0_reg_write_addr_o <= 5'b0;
+            cp0_reg_we_o <= 1'b0;
+        end
+        else begin
+            if(aluop_i == `EXE_MTC0_OP)begin
+                cp0_reg_data_o <= reg2_i;       //这里和书上不一样，因为reg2就是rt的值，而书上是改了reg1的地址进行获取rt的值
+                cp0_reg_write_addr_o <= inst_i[15:11];
+                cp0_reg_we_o <= 1'b1;
+            end
+            else begin
+                cp0_reg_data_o <= `ZeroWord;
+                cp0_reg_write_addr_o <= 5'b0;
+                cp0_reg_we_o <= 1'b0;
+            end
+        end
+    end
 
     //准备工作：将HI和LO的现值准备好
     always @(*) begin
@@ -486,6 +523,22 @@ module ex(
         end
         else begin
             {HI,LO} <= {hi_i,lo_i};
+        end
+    end
+    //准备工作：获取协处理中的最新值
+    assign cp0_reg_read_addr_o = inst_i[15:11];
+    always @(*)begin
+        if(rst == `RstEna)begin
+            CP0_reg_data <= `ZeroWord;
+        end //当能写且地址与接下来读取的地址相同时，则直接获取该数据
+        else if(mem_cp0_reg_we == 1'b1 && mem_cp0_reg_write_addr == inst_i[15:11])begin
+            CP0_reg_data <= mem_cp0_reg_data;
+        end
+        else if(wb_cp0_reg_we == 1'b1 && wb_cp0_reg_write_addr == inst_i[15:11])begin
+            CP0_reg_data <= wb_cp0_reg_data;
+        end
+        else begin
+            CP0_reg_data <= cp0_reg_data_i;
         end
     end
 endmodule

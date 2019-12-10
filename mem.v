@@ -20,6 +20,10 @@ module mem(
     //来自mem_wb的旁路（用于 sc 指令）
     input wb_LLbit_we_i,
     input wb_LLbit_value_i,
+    //协处理器
+    input [`RegBus] cp0_reg_data_i,
+    input [`RegAddrBus] cp0_reg_write_addr_i,
+    input cp0_reg_we_i,
 
     output reg wreg_o,
     output reg [`RegAddrBus] waddr_o,
@@ -36,7 +40,11 @@ module mem(
     output reg mem_we_o,                //指定是加载还是存储操作
     output reg mem_ce_o,                //相当于是读使能
     //字节选择信号,ram是从传入的地址开始，选择sel个字节的数据的，比如传入的地址是5，sel是1，则选择地址为5,6的数据
-    output reg [3:0] mem_sel_o  //这个应该是哪一位为1则获取哪些位置的数据，比如4'b0011则获取后两位的数据
+    output reg [3:0] mem_sel_o,  //这个应该是哪一位为1则获取哪些位置的数据，比如4'b0011则获取后两位的数据
+    //协处理器
+    output reg [`RegBus] cp0_reg_data_o,
+    output reg [`RegAddrBus] cp0_reg_write_addr_o,
+    output reg cp0_reg_we_o
     );
     wire [1:0] n;                       //l r 类型指令，数据的位数
     wire [`RegBus] mem_addr;            //用来存放对齐后的地址
@@ -67,6 +75,9 @@ module mem(
             whilo_o <= `WriteDisa;
             hi_o <= `ZeroWord;
             lo_o <= `ZeroWord;
+            cp0_reg_data_o <= `ZeroWord;
+            cp0_reg_write_addr_o <= 5'b0;
+            cp0_reg_we_o <= 1'b0;
             mem_data_o <= `ZeroWord;
             mem_addr_o <= `ZeroWord;
             mem_we_o <= `IsRead;        //默认为读操作
@@ -366,6 +377,9 @@ module mem(
                     whilo_o <= whilo_i;
                     hi_o <= hi_i;
                     lo_o <= lo_i;
+                    cp0_reg_data_o <= cp0_reg_data_i;
+                    cp0_reg_write_addr_o <= cp0_reg_write_addr_i;
+                    cp0_reg_we_o <= cp0_reg_we_i;
                     mem_we_o <= `WriteDisa;
                     mem_addr_o <= `ZeroWord;
                     mem_sel_o <= 4'b1111;       //默认读取一个字

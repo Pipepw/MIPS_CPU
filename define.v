@@ -96,6 +96,9 @@
 `define EXE_MADDU       6'b000001           //s2后面的功能码
 `define EXE_MSUB        6'b000100           //s2后面的功能码
 `define EXE_MSUBU       6'b000101           //s2后面的功能码
+//接在CP0指令码后面的，位于原本的rs寄存器所在的部分
+`define EXE_MTC0        5'b00100            //mtc0
+`define EXE_MFC0        5'b00000            //mfc0
 
 `define EXE_SYNC        6'b001111           //sync的功能码
 `define EXE_PREF        6'b110011           //pref的指令码
@@ -103,6 +106,7 @@
 `define EXE_SPECIAL_INST    6'b000000       //SPECIAL类的指令码,用于在op为0的时候
 `define EXE_REGIMM_INST     6'b000001       //REGIMM类的指令码
 `define EXE_SPECIAL2_INST   6'b011100       //SPECIAL2类的指令码
+`define EXE_CP0_INST        6'b010000       //用于判断cp相关的两条指令
 
 //AluOp
 `define EXE_AND_OP      8'b00000001     //AND控制信号
@@ -170,6 +174,9 @@
 `define EXE_SWR_OP      8'b00110111     //右边部分，假设存放的地址是5，则将右边半个字存放到4 5中
 `define EXE_LL_OP       8'b00111000     //ll rt,offset(base)只是多了对LLbit寄存器的处理
 `define EXE_SC_OP       8'b00111001     //sc rt,offset(base)
+    //协处理器访问指令
+`define EXE_MTC0_OP     8'b00111010     //mtc0 rt,rd;   将rt的值赋值到CP0中地址为rd中的值的寄存器
+`define EXE_MFC0_OP     8'b00111011     //mfc0 rt,rd;   读出CP0中的值存放到rt寄存器中
 
 `define EXE_PREF_OP 8'b11111111     //PREF
 `define EXE_NOP_OP  8'b00000000     //这个就是流水线中的气泡
@@ -206,7 +213,7 @@
 `define DivOn           2'b10
 `define DivEnd          2'b11
 
-//***加载存储的宏定义
+//************ 加载存储的宏定义 **********************************
 `define IsWrite         1'b1
 `define IsRead          1'b0
 `define DataAddrBus     31:0        //地址总线宽度
@@ -214,3 +221,14 @@
 `define DataMemNum      131017      //RAM的大小，单位是字，这里是128K word
 `define DataMemNumlog2  15          //实际使用的地址宽度
 `define ByteWidth       7:0         //一个字的宽度，这里是8bit
+
+//************ 协处理器cp0的宏定义 ******************************
+`define CP0_REG_COUNT   5'b01001    //对应寄存器的标号，这里只实现这七种寄存器
+`define CP0_REG_COMPARE 5'b01011
+`define CP0_REG_STATUS  5'b01100
+`define CP0_REG_CAUSE   5'b01101
+`define CP0_REG_EPC     5'b01110
+`define CP0_REG_PRID    5'b01111
+`define CP0_REG_CONFIG  5'b10000
+`define InterruptAssert 1'b1
+`define InterruptNotAssert 1'b0

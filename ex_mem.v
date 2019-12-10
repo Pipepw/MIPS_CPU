@@ -17,6 +17,10 @@ module ex_mem(
     input [`AluOpBus] ex_aluop,
     input [`RegBus] ex_mem_addr,
     input [`RegBus] ex_reg2,
+    //协处理器
+    input [`RegBus] ex_cp0_reg_data,
+    input [`RegAddrBus] ex_cp0_reg_write_addr,
+    input ex_cp0_reg_we,
 
     output reg [`RegAddrBus] mem_waddr,
     output reg [`RegBus] mem_wdata,
@@ -29,7 +33,11 @@ module ex_mem(
     // output reg [`DoubleRegBus] hilo_temp_o
     output reg [`AluOpBus] mem_aluop,
     output reg [`RegBus] mem_mem_addr,
-    output reg [`RegBus] mem_reg2
+    output reg [`RegBus] mem_reg2,
+    //协处理器
+    output reg [`RegBus] mem_cp0_reg_data,
+    output reg [`RegAddrBus] mem_cp0_reg_write_addr,
+    output reg mem_cp0_reg_we
     );
     always @(posedge clk)begin
         if(rst == `RstEna)begin
@@ -44,6 +52,9 @@ module ex_mem(
             mem_aluop <= `EXE_NOP_OP;
             mem_mem_addr <= `ZeroWord;
             mem_reg2 <= `ZeroWord;
+            mem_cp0_reg_data <= `ZeroWord;
+            mem_cp0_reg_write_addr <= 5'b0;
+            mem_cp0_reg_we <= 1'b0;
         end
         else if(stall[3] == `Stop && stall[4] == `NoStop)begin
             mem_waddr <= `NOPRegAddr;
@@ -57,6 +68,9 @@ module ex_mem(
             mem_aluop <= `EXE_NOP_OP;
             mem_mem_addr <= `ZeroWord;
             mem_reg2 <= `ZeroWord;
+            mem_cp0_reg_data <= `ZeroWord;
+            mem_cp0_reg_write_addr <= 5'b0;
+            mem_cp0_reg_we <= 1'b0;
         end
         else if(stall[3] == `NoStop)begin   //在乘累加的第二阶段就已经解除阻塞了，也就是在最后一个阶段都需要解除阻塞
             mem_waddr <= ex_waddr;
@@ -70,6 +84,9 @@ module ex_mem(
             mem_aluop <= ex_aluop;
             mem_mem_addr <= ex_mem_addr;
             mem_reg2 <= ex_reg2;
+            mem_cp0_reg_data <= ex_cp0_reg_data;
+            mem_cp0_reg_write_addr <= ex_cp0_reg_write_addr;
+            mem_cp0_reg_we <= ex_cp0_reg_we;
         end
         else begin
             // hilo_temp_o <= hilo_temp_i;

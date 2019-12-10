@@ -16,7 +16,10 @@ module cpu(
     output [`RegBus] ram_data_i,        //加载存储的数据
     output ram_we_i,                    //控制加载或存储
     output [3:0] ram_sel_i,             //控制加载存储地址
-    output ram_ce_i                     //控制是否能读
+    output ram_ce_i,                    //控制是否能读
+    //中断
+    input [5:0] int_i,
+    output timer_int_o
     );
 
 /********************每个部件之间的连线******************/
@@ -76,6 +79,9 @@ module cpu(
     wire [`AluOpBus] aluop_ex_mem;  //指令类型
     wire [`RegBus] reg2_ex_mem;     //rt的数据
     wire [`RegBus] mem_addr_ex_mem; //控制ram的地址
+    wire [`RegBus] cp0_reg_data_ex;
+    wire [`RegAddrBus] cp0_reg_write_addr_ex;
+    wire cp0_reg_we_ex;
 
     //ex_mem的输出与mem的输入
     wire [`RegBus] wdata_mem;        //写入的数据
@@ -87,6 +93,9 @@ module cpu(
     wire [`AluOpBus] aluop_mem;     //指令类型
     wire [`RegBus] reg2_mem;        //rt的数据
     wire [`RegBus] mem_addr_mem;    //控制ram的地址
+    wire [`RegBus] cp0_reg_data_mem;
+    wire [`RegAddrBus] cp0_reg_write_addr_mem;
+    wire cp0_reg_we_mem;
 
     //mem的输出与mem_wb的输入
     wire [`RegBus] wdata_mem_mem;    //写入的数据
@@ -97,6 +106,9 @@ module cpu(
     wire whilo_mem_mem;
     wire LLbit_we_mem_mem;
     wire LLbit_value_mem_mem;
+    wire [`RegBus] cp0_reg_data_mem_mem;
+    wire [`RegAddrBus] cp0_reg_write_addr_mem_mem;
+    wire cp0_reg_we_mem_mem;
 
     //mem_wb的输出与regfile的输入
     wire [`RegBus] wdata_reg;        //写入的数据
@@ -109,6 +121,11 @@ module cpu(
     //mem_wb的输出与LLbit_reg的输入
     wire LLbit_we;
     wire LLbit_value;
+    //mem_wb的输出与cp0_reg的输入
+    wire cp0_reg_we;
+    wire [`RegAddrBus] cp0_reg_waddr;
+    wire [`RegAddrBus] cp0_reg_raddr;     //这个是ex的输出
+    wire [`RegBus] cp0_reg_data;
 
     //LLbit_reg的输出与mem的输入
     wire LLbit;
@@ -116,6 +133,9 @@ module cpu(
     //hilo_reg的输出与ex的输入
     wire [`RegBus] hi;
     wire [`RegBus] lo;
+
+    //cp0_reg的输出与ex的输入
+    wire [`RegBus] cp0_reg_data_to_ex;  //其余的端口暂时用不到
 
     //ctrl的输入与输出，同时也是各个中间件的输入
     wire stallreq_from_ex;
@@ -126,7 +146,7 @@ module cpu(
     wire [1:0] cnt_ex_i;
     // wire [`DoubleRegBus] hilo_temp_ex_i;
     wire [1:0] cnt_ex_o;
-    // wire [`DoubleRegBus] hilo_temp_ex_o;
+    wire [`DoubleRegBus] hilo_temp_ex_o;
 
     //ex与div之间的交易
     wire [`RegBus] div_opdata1;
@@ -272,6 +292,14 @@ module cpu(
         //div的输入
         .div_result(div_result),
         .div_ready(div_ready),
+        //协处理器
+        .cp0_reg_data_i(cp0_reg_data_to_ex),
+        .wb_cp0_reg_data(cp0_reg_data),
+        .wb_cp0_reg_write_addr(cp0_reg_waddr),
+        .wb_cp0_reg_we(cp0_reg_we),
+        .mem_cp0_reg_data(cp0_reg_data_mem_mem),
+        .mem_cp0_reg_write_addr(cp0_reg_write_addr_mem_mem),
+        .mem_cp0_reg_we(cp0_reg_we_mem_mem),
 
         .wreg_o(wreg_ex_mem),
         .waddr_o(waddr_ex),
@@ -289,7 +317,11 @@ module cpu(
         .div_opdata2(div_opdata2),
         .reg2_o(reg2_ex_mem),
         .aluop_o(aluop_ex_mem),
-        .mem_addr_o(mem_addr_ex_mem)
+        .mem_addr_o(mem_addr_ex_mem),
+        .cp0_reg_read_addr_o(cp0_reg_raddr),
+        .cp0_reg_data_o(cp0_reg_data_ex),
+        .cp0_reg_write_addr_o(cp0_reg_write_addr_ex),
+        .cp0_reg_we_o(cp0_reg_we_ex)
     );
 
     //ex_mem的实例化
@@ -308,6 +340,9 @@ module cpu(
         .ex_aluop(aluop_ex_mem),
         .ex_mem_addr(mem_addr_ex_mem),
         .ex_reg2(reg2_ex_mem),
+        .ex_cp0_reg_data(cp0_reg_data_ex),
+        .ex_cp0_reg_write_addr(cp0_reg_write_addr_ex),
+        .ex_cp0_reg_we(cp0_reg_we_ex),
 
         .mem_waddr(waddr_mem),
         .mem_wdata(wdata_mem),
@@ -319,7 +354,10 @@ module cpu(
         .cnt_o(cnt_ex_i),
         .mem_aluop(aluop_mem),
         .mem_mem_addr(mem_addr_mem),
-        .mem_reg2(reg2_mem)
+        .mem_reg2(reg2_mem),
+        .mem_cp0_reg_data(cp0_reg_data_mem),
+        .mem_cp0_reg_write_addr(cp0_reg_write_addr_mem),
+        .mem_cp0_reg_we(cp0_reg_we_mem)
     );
 
     //mem的实例化
@@ -338,6 +376,9 @@ module cpu(
         .LLbit_i(LLbit),
         .wb_LLbit_we_i(LLbit_we),
         .wb_LLbit_value_i(LLbit_value),
+        .cp0_reg_data_i(cp0_reg_data_mem),
+        .cp0_reg_write_addr_i(cp0_reg_write_addr_mem),
+        .cp0_reg_we_i(cp0_reg_we_mem),
 
         .wreg_o(wreg_mem_mem),
         .waddr_o(waddr_mem_mem),
@@ -351,7 +392,10 @@ module cpu(
         .mem_ce_o(ram_ce_i),
         .mem_sel_o(ram_sel_i),
         .LLbit_we_o(LLbit_we_mem_mem),
-        .LLbit_value_o(LLbit_value_mem_mem)
+        .LLbit_value_o(LLbit_value_mem_mem),
+        .cp0_reg_data_o(cp0_reg_data_mem_mem),
+        .cp0_reg_write_addr_o(cp0_reg_write_addr_mem_mem),
+        .cp0_reg_we_o(cp0_reg_we_mem_mem)
     );
 
     //mem_wb的实例化
@@ -367,6 +411,9 @@ module cpu(
         .stall(stall),
         .mem_LLbit_we(LLbit_we_mem_mem),
         .mem_LLbit_value(LLbit_value_mem_mem),
+        .mem_cp0_reg_data(cp0_reg_data_mem_mem),
+        .mem_cp0_reg_write_addr(cp0_reg_write_addr_mem_mem),
+        .mem_cp0_reg_we(cp0_reg_we_mem_mem),
 
         .wb_reg(wreg_reg),
         .wb_waddr(waddr_reg),
@@ -375,7 +422,10 @@ module cpu(
         .wb_hi(hi_hilo),
         .wb_lo(lo_hilo),
         .wb_LLbit_we(LLbit_we),
-        .wb_LLbit_value(LLbit_value)
+        .wb_LLbit_value(LLbit_value),
+        .wb_cp0_reg_data(cp0_reg_data),
+        .wb_cp0_reg_write_addr(cp0_reg_waddr),
+        .wb_cp0_reg_we(cp0_reg_we)
     );
 
     hilo_reg hilo_reg0(
@@ -414,5 +464,17 @@ module cpu(
         .we(LLbit_we),
         .LLbit_i(LLbit_value),
         .LLbit_o(LLbit)
+    );
+
+    cp0_reg cp0_reg0(
+        .clk(clk),
+        .rst(rst),
+        .waddr_i(cp0_reg_waddr),
+        .raddr_i(cp0_reg_raddr),
+        .data_i(cp0_reg_data),
+        .we_i(cp0_reg_we),
+        .int_i(int_i),
+        .data_o(cp0_reg_data_to_ex),
+        .timer_int_o(timer_int_o)
     );
 endmodule

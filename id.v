@@ -86,7 +86,8 @@ module id(
     //没有将ll以及sc加入进去
     assign inst_is_load = (ex_aluop_i == `EXE_LB_OP || ex_aluop_i == `EXE_LBU_OP || ex_aluop_i == `EXE_LH_OP ||
                             ex_aluop_i == `EXE_LHU_OP || ex_aluop_i == `EXE_LW_OP || ex_aluop_i == `EXE_LWL_OP ||
-                            ex_aluop_i == `EXE_LWR_OP)?1'b1:1'b0;
+                            ex_aluop_i == `EXE_LWR_OP || ex_aluop_i == `EXE_LL_OP || ex_aluop_i == `EXE_SC_OP)
+                            ?1'b1:1'b0;
 
 /**********************一、对指令进行译码*****************************/
 
@@ -107,6 +108,26 @@ module id(
             next_inst_is_delay_o <= 1'b0;
             branch_addr_inst_o <= `ZeroWord;
         end
+        //协处理器访问指令
+        else if(inst_i[31:21] == 11'b01000000100 &&     //mtc0指令
+                inst_i[10:0] == 11'b0)begin
+            aluop_o <= `EXE_MTC0_OP;
+            alusel_o <= `EXE_RES_MOVE;
+            wreg_o <= `WriteDisa;           //这个写是对寄存器组来说的
+            reg1_read_o <= `ReadDisa;
+            reg2_read_o <= `ReadEna;         //获取rt寄存器的值，用来写入到地址为rd的协处理器寄存器中
+            instvalid <= `InstValid;
+        end
+        else if(inst_i[31:21] == 11'b01000000000 &&     //mfc0指令
+                inst_i[10:0] == 11'b0)begin
+            aluop_o <= `EXE_MFC0_OP;
+            alusel_o <= `EXE_RES_MOVE;
+            waddr_o <= inst_i[20:16];
+            wreg_o <= `WriteEna;
+            reg1_read_o <= `ReadDisa;
+            reg2_read_o <= `ReadDisa;
+            instvalid <= `InstValid;
+        end
         else begin
         //先对共用的部分进行初始化，主要是对输出到执行阶段的部分进行赋值，只是进行初始化，设置一些默认值
             aluop_o <= `EXE_NOP_OP;     //先初始化为气泡
@@ -116,7 +137,7 @@ module id(
             instvalid <= `InstValid;
             reg1_read_o <= `ReadDisa;
             reg2_read_o <= `ReadDisa;
-            reg1_addr_o <= inst_i[25:21];   //rs寄存器
+            reg1_addr_o <= inst_i[25:21];   //rs寄存器，每次进行赋值是为了避免后面覆盖之后获取的就变了
             reg2_addr_o <= inst_i[20:16];   //rt寄存器
             imm <= `ZeroWord;
             branch_flag_o <= 1'b0;
